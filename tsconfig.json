@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler",
+		"target": "es2022",
+		"allowJs": false,
+		"resolveJsonModule": true,
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"allowImportingTsExtensions": true,
+        "noEmit": true,
+		"module": "es2022",
+		"outDir": "dist",
+		"sourceMap": true,
+		"lib": ["es2022"],
+		"rootDir": "./src",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		}
+	}
+}
