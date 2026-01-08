@@ -15,3 +15,4 @@ If you are not familiar with the different technologies used in this project, pl
 - [Socket.io](https://socket.io/)
 - [Express](https://expressjs.com/)
 
+### The frontend part is here [FRONTEND](https://github.com/PSB1234/Industrial.io)
