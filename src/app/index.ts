@@ -2,7 +2,6 @@ import { createServer } from "node:http";
 import cors from "cors";
 import express, { type Express } from "express";
 import { initializeSocket } from "@/app/socket";
-import route from "@/routes/option.route";
 
 //create express app
 const app: Express = express();
@@ -17,7 +16,6 @@ app.use(
 );
 app.use(express.json());
 //routes
-app.use("/api/options", route);
 //create http server
 const httpServer = createServer(app);
 const port = 8080;

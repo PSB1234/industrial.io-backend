@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Server, Socket } from "socket.io";
-import { assignPosition } from "@/lib/position_storage";
-import { getPlayerProperties } from "@/lib/properties_storage";
-import { getRoomStatus } from "@/lib/status_storage";
-import { getVotes } from "@/lib/kick_storage";
+import { getVotes } from "@/lib/storage/kick_storage";
+import { assignPosition } from "@/lib/storage/position_storage";
+import { getPlayerPropertiesWithRanks } from "@/lib/storage/properties_storage";
+import { getRoomName } from "@/lib/storage/room_name_storage";
+import { getRoomStatus } from "@/lib/storage/status_storage";
 import type {
 	ClientToServerEvents,
 	InterServerEvents,
@@ -13,7 +14,7 @@ import type {
 //Max Player Count
 export const max_Player_Count = 4;
 export const users = new Map<string, number>();
-
+export const disconnectTimers = new Map<string, NodeJS.Timeout>();
 export function numberOfPlayersInRoom(io: Server, room: string) {
 	return io.of("/").adapter.rooms.get(room)?.size || 0;
 }
@@ -41,7 +42,7 @@ export function usersInRoomWithNames(io: Server, roomKey: string) {
 	return Array.from(socketsInRoom).map((socketId) => {
 		const socket = io.sockets.sockets.get(socketId);
 		const userId = socket?.data.userid || randomUUID();
-		const properties = getPlayerProperties(roomKey, userId);
+		const properties = getPlayerPropertiesWithRanks(roomKey, userId);
 		return {
 			id: userId,
 			username: socket?.data.name || "Unknown",
@@ -52,7 +53,8 @@ export function usersInRoomWithNames(io: Server, roomKey: string) {
 			money: socket?.data.money || 0,
 			color: socket?.data.color || "#000000",
 			votes: getVotes(roomKey, userId),
-			properties: Array.from(properties),
+			properties,
+			leader: socket?.data.leader || false,
 		};
 	});
 }
@@ -79,7 +81,7 @@ export function getTotalRooms(
 ) {
 	const rooms = Array.from(io.of("/").adapter.rooms.keys());
 	// Filter out rooms that are socket IDs (private rooms) and only show waiting rooms
-	const publicRooms = rooms
+	const publicRoomKeys = rooms
 		.filter((room) => {
 			return !io.sockets.sockets.get(room);
 		})
@@ -87,6 +89,13 @@ export function getTotalRooms(
 			const status = getRoomStatus(room);
 			return status === "waiting";
 		});
+
+	// Map room keys to RoomData objects with name and roomKey
+	const publicRooms = publicRoomKeys.map((roomKey) => ({
+		roomKey,
+		name: getRoomName(roomKey) || roomKey,
+	}));
+
 	return publicRooms;
 }
 export function generateRoomId(

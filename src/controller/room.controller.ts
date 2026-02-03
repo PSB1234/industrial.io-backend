@@ -1,6 +1,5 @@
 // socket/controllers/room.controller.ts
 import type { Server, Socket } from "socket.io";
-import { addVote, getVotes, getVotedPlayers } from "@/lib/kick_storage";
 import {
 	computeUserId,
 	generateRoomId,
@@ -9,18 +8,20 @@ import {
 	numberOfPlayersInRoom,
 	usersInRoomWithNames,
 } from "@/helper";
-import { clearRoomMessages, getRoomMessages } from "@/lib/chat_storage";
-import { assignColor, removeColor } from "@/lib/color_storage";
-import { assignMoney, removeMoney } from "@/lib/money_storage";
-import { assignPosition, removePosition } from "@/lib/position_storage";
-import {
-	getPlayerProperties,
-	removeAllPlayerProperties,
-} from "@/lib/properties_storage";
-import { assignRank, removeRank } from "@/lib/rank_storage";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
-import { setRoomStatus } from "@/lib/status_storage";
-import { getTurn } from "@/lib/turn_storage";
+import { clearRoomMessages, getRoomMessages } from "@/lib/storage/chat_storage";
+import { assignColor, removeColor } from "@/lib/storage/color_storage";
+import { addVote, getVotedPlayers, getVotes } from "@/lib/storage/kick_storage";
+import { assignMoney, removeMoney } from "@/lib/storage/money_storage";
+import { assignPosition, removePosition } from "@/lib/storage/position_storage";
+import {
+	getPlayerPropertiesWithRanks,
+	removeAllPlayerProperties,
+} from "@/lib/storage/properties_storage";
+import { assignRank, removeRank } from "@/lib/storage/rank_storage";
+import { getRoomName, setRoomName } from "@/lib/storage/room_name_storage";
+import { setRoomStatus } from "@/lib/storage/status_storage";
+import { getTurn } from "@/lib/storage/turn_storage";
 import { joinRandomRoom } from "@/service/room.service";
 import type {
 	ClientToServerEvents,
@@ -28,6 +29,7 @@ import type {
 	ServerToClientEvents,
 	SocketData,
 } from "@/types/type";
+import { createRoomSchema } from "@/types/zod";
 
 export function registerRoomController(
 	io: Server<
@@ -38,15 +40,26 @@ export function registerRoomController(
 	>,
 	socket: Socket<ClientToServerEvents, ServerToClientEvents>,
 ) {
-	socket.on(SOCKET_EVENTS.CREATE_ROOM, (isPrivate, color, callback) => {
+	socket.on(SOCKET_EVENTS.CREATE_ROOM, (options, color, callback) => {
 		try {
+			const { success, data, error } = createRoomSchema.safeParse(options);
+			if (!success) {
+				console.error("Invalid room options:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Invalid room options");
+				return;
+			}
+			const {
+				roomName: name,
+				type,
+				password,
+			} = data;
 			const roomKey = generateRoomId(io);
 			const players = usersInRoomWithNames(io, roomKey);
-			const rooms = getTotalRooms(io);
+			setRoomName(roomKey, name);
 			socket.data.roomKey = roomKey;
 			socket.data.position = assignPosition(roomKey, socket.data.userid);
 			socket.data.rank = assignRank(roomKey, socket.data.userid);
-
+			socket.data.leader = true;
 			assignColor(roomKey, socket.data.userid, color);
 			socket.data.money = assignMoney(roomKey, socket.data.userid);
 			socket.data.color = color;
@@ -54,9 +67,11 @@ export function registerRoomController(
 			setRoomStatus(roomKey, "waiting");
 			socket.join(roomKey);
 			callback(roomKey, players);
-			// Initialize empty chat history
 			clearRoomMessages(roomKey);
-			const properties = getPlayerProperties(roomKey, socket.data.userid);
+			const properties = getPlayerPropertiesWithRanks(
+				roomKey,
+				socket.data.userid,
+			);
 			io.to(roomKey).emit(SOCKET_EVENTS.GAME_LOOP, roomKey, {
 				id: socket.data.userid,
 				username: socket.data.name,
@@ -66,13 +81,15 @@ export function registerRoomController(
 				money: socket.data.money,
 				color: socket.data.color,
 				votes: getVotes(roomKey, socket.data.userid),
-				properties: Array.from(properties),
+				properties: properties,
+				leader: socket.data.leader,
 			});
 			// Broadcast current turn
 			io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, getTurn(roomKey));
 			const votedPlayers = getVotedPlayers(roomKey, socket.data.userid);
 			socket.emit(SOCKET_EVENTS.YOUR_VOTES, votedPlayers);
-			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+			const roomData = getTotalRooms(io);
+			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 			console.log(`User ${socket.id} created & joined room: ${roomKey}`);
 		} catch (error) {
 			socket.emit(SOCKET_EVENTS.ERROR, "Joining Room Failed");
@@ -96,7 +113,6 @@ export function registerRoomController(
 				socket.data.color = color;
 				socket.data.properties = [];
 				socket.join(randomRoomKey);
-				//TODO: Initialize the player data
 				socket.data.position = assignPosition(
 					randomRoomKey,
 					socket.data.userid,
@@ -108,7 +124,7 @@ export function registerRoomController(
 				);
 				// Send chat history to the joining user
 				socket.emit(SOCKET_EVENTS.CHAT_HISTORY, getRoomMessages(randomRoomKey));
-				const properties = getPlayerProperties(
+				const properties = getPlayerPropertiesWithRanks(
 					randomRoomKey,
 					socket.data.userid,
 				);
@@ -121,18 +137,17 @@ export function registerRoomController(
 					money: socket.data.money,
 					color: socket.data.color,
 					votes: getVotes(randomRoomKey, socket.data.userid),
-					properties: Array.from(properties),
+					properties: properties,
+					leader: socket.data.leader,
 				});
 				io.to(randomRoomKey).emit(
 					SOCKET_EVENTS.RECEIVE_TURN,
 					getTurn(randomRoomKey),
 				);
-				const votedPlayers = getVotedPlayers(
-					randomRoomKey,
-					socket.data.userid,
-				);
+				const votedPlayers = getVotedPlayers(randomRoomKey, socket.data.userid);
 				socket.emit(SOCKET_EVENTS.YOUR_VOTES, votedPlayers);
-				io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+				const roomData = getTotalRooms(io);
+				io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 			} else {
 				console.error("Error joining room: Room Limit Reached");
 				socket.emit(SOCKET_EVENTS.ERROR, "Room Limit Reached");
@@ -163,7 +178,10 @@ export function registerRoomController(
 					console.log(`User ${username} joined room: ${roomKey}`);
 					// Send chat history to the joining user
 					socket.emit(SOCKET_EVENTS.CHAT_HISTORY, getRoomMessages(roomKey));
-					const properties = getPlayerProperties(roomKey, socket.data.userid);
+					const properties = getPlayerPropertiesWithRanks(
+						roomKey,
+						socket.data.userid,
+					);
 					io.to(roomKey).emit(SOCKET_EVENTS.GAME_LOOP, roomKey, {
 						id: socket.data.userid,
 						username: socket.data.name,
@@ -173,12 +191,14 @@ export function registerRoomController(
 						position: socket.data.position,
 						color: socket.data.color,
 						votes: getVotes(roomKey, socket.data.userid),
-						properties: Array.from(properties),
+						properties: properties,
+						leader: socket.data.leader,
 					});
 					io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, getTurn(roomKey));
 					const votedPlayers = getVotedPlayers(roomKey, socket.data.userid);
 					socket.emit(SOCKET_EVENTS.YOUR_VOTES, votedPlayers);
-					io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+					const roomData = getTotalRooms(io);
+					io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 				} else {
 					console.error("Error joining room: Room Limit Reached");
 					socket.emit(SOCKET_EVENTS.ERROR, "Room Limit Reached");
@@ -193,7 +213,8 @@ export function registerRoomController(
 		try {
 			setRoomStatus(roomKey, status);
 			io.to(roomKey).emit(SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS);
-			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+			const roomData = getTotalRooms(io);
+			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 		} catch (error) {
 			console.error("Error changing room status:", error);
 			socket.emit(SOCKET_EVENTS.ERROR, "Failed to change room status");
@@ -224,7 +245,9 @@ export function registerRoomController(
 			socket.leave(roomKey);
 			console.log(`User ${userId} left room: ${roomKey}`);
 			io.to(roomKey).emit(SOCKET_EVENTS.USER_DISCONNECTED, userId);
-			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+			io.to(roomKey).emit(SOCKET_EVENTS.PLAYER_LEFT, userId);
+			const roomData = getTotalRooms(io);
+			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 		} catch (error) {
 			console.error("Error leaving room:", error);
 			socket.emit(SOCKET_EVENTS.ERROR, "Failed to leave room");
@@ -237,7 +260,8 @@ export function registerRoomController(
 			socket.leave(roomKey);
 			console.log(`User ${userId} left room: ${roomKey}`);
 			io.to(roomKey).emit(SOCKET_EVENTS.USER_DISCONNECTED, userId);
-			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
+			const roomData = getTotalRooms(io);
+			io.emit(SOCKET_EVENTS.GET_ALL_ROOMS, roomData);
 		} catch (error) {
 			console.error("Error leaving room:", error);
 			socket.emit(SOCKET_EVENTS.ERROR, "Failed to leave room");

@@ -1,15 +1,19 @@
 import type { Server, Socket } from "socket.io";
 import { numberOfPlayersInRoom } from "@/helper";
+import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
 	addMoney,
 	deductMoney,
 	getMoney,
 	updateMoney,
-} from "@/lib/money_storage";
-import { updatePosition } from "@/lib/position_storage";
-import { assignProperty, removeProperty } from "@/lib/properties_storage";
-import { SOCKET_EVENTS } from "@/lib/socket_events";
-import { setTurn } from "@/lib/turn_storage";
+} from "@/lib/storage/money_storage";
+import { updatePosition } from "@/lib/storage/position_storage";
+import {
+	assignProperty,
+	getPropertyRank,
+	removeProperty,
+} from "@/lib/storage/properties_storage";
+import { setTurn } from "@/lib/storage/turn_storage";
 import type {
 	ClientToServerEvents,
 	InterServerEvents,
@@ -91,8 +95,9 @@ export function registerGameController(
 					deductMoney(roomKey, fromPlayer, moneyOffered);
 					addMoney(roomKey, toPlayer, moneyOffered);
 					propertyOffered.forEach((propertyId) => {
+						const rank = getPropertyRank(roomKey, fromPlayer, propertyId);
 						removeProperty(roomKey, fromPlayer, propertyId);
-						assignProperty(roomKey, toPlayer, propertyId);
+						assignProperty(roomKey, toPlayer, propertyId, rank);
 						io.to(roomKey).emit(
 							SOCKET_EVENTS.PROPERTY_BOUGHT,
 							propertyId,
@@ -108,8 +113,9 @@ export function registerGameController(
 					deductMoney(roomKey, toPlayer, moneyRequested);
 					addMoney(roomKey, fromPlayer, moneyRequested);
 					propertyRequested.forEach((propertyId) => {
+						const rank = getPropertyRank(roomKey, toPlayer, propertyId);
 						removeProperty(roomKey, toPlayer, propertyId);
-						assignProperty(roomKey, fromPlayer, propertyId);
+						assignProperty(roomKey, fromPlayer, propertyId, rank);
 						io.to(roomKey).emit(
 							SOCKET_EVENTS.PROPERTY_BOUGHT,
 							propertyId,
@@ -137,6 +143,29 @@ export function registerGameController(
 				tradeData,
 				accepted === "accepted",
 			);
+		},
+	);
+	socket.on(
+		SOCKET_EVENTS.UPGRADE_PROPERTY,
+		(propertyId, userId, roomKey, upgradeCost) => {
+			const currentRank = getPropertyRank(roomKey, userId, propertyId);
+			if (currentRank < 5) {
+				// Upgrade property rank
+				removeProperty(roomKey, userId, propertyId);
+				assignProperty(roomKey, userId, propertyId, currentRank + 1);
+				addMoney(roomKey, userId, -upgradeCost);
+				const newBalance = getMoney(roomKey, userId);
+				io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_MONEY, newBalance, userId);
+				console.log(
+					`DEBUG: UPGRADE_PROPERTY received. PropertyId: ${propertyId}, User: ${userId}, Room: ${roomKey}`,
+				);
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.PROPERTY_UPGRADED,
+					propertyId,
+					userId,
+					currentRank + 1,
+				);
+			}
 		},
 	);
 }

@@ -1,10 +1,12 @@
+import type z from "zod";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
+import type { createRoomSchema } from "@/types/zod";
 
 export interface ServerToClientEvents {
 	[SOCKET_EVENTS.USER_CONNECTED]: (username: string) => void;
 	[SOCKET_EVENTS.USER_DISCONNECTED]: (userId: string) => void;
 	[SOCKET_EVENTS.USERNAME_ASSIGNED]: (username: string) => void;
-	[SOCKET_EVENTS.GET_ALL_ROOMS]: (roomsData: string[]) => void;
+	[SOCKET_EVENTS.GET_ALL_ROOMS]: (roomsData: RoomData[]) => void;
 	[SOCKET_EVENTS.PLAYER_LEFT]: (socket_id: string) => void;
 	[SOCKET_EVENTS.GAME_LOOP]: (receivedRoomKey: string, player: Player) => void;
 	[SOCKET_EVENTS.ERROR]: (message: string) => void;
@@ -21,6 +23,11 @@ export interface ServerToClientEvents {
 		voterId: string,
 	) => void;
 	[SOCKET_EVENTS.YOUR_VOTES]: (votedPlayerIds: string[]) => void;
+	[SOCKET_EVENTS.PROPERTY_UPGRADED]: (
+		propertyId: number,
+		userid: string,
+		rank: number,
+	) => void;
 	[SOCKET_EVENTS.RECEIVE_TRADE_OFFER]: (
 		fromPlayer: string,
 		toPlayer: string,
@@ -47,7 +54,7 @@ export interface ServerToClientEvents {
 // Events that the client emits to the server
 export interface ClientToServerEvents {
 	[SOCKET_EVENTS.CREATE_ROOM]: (
-		isPrivate: boolean,
+		options: z.infer<typeof createRoomSchema>,
 		color: string,
 		callback: (roomkey: string, playerList: Player[]) => void,
 	) => void;
@@ -86,6 +93,12 @@ export interface ClientToServerEvents {
 		roomKey: string,
 		tradeData: { offer: TradeData; request: TradeData },
 	) => void;
+	[SOCKET_EVENTS.UPGRADE_PROPERTY]: (
+		propertyId: number,
+		userId: string,
+		roomKey: string,
+		upgradeCost: number,
+	) => void;
 	[SOCKET_EVENTS.CONFIRM_TRADE_OFFER]: (
 		fromPlayer: string,
 		toPlayer: string,
@@ -111,7 +124,8 @@ export interface SocketData {
 	position: number;
 	money: number;
 	color: string;
-	properties: number[];
+	properties: Property[];
+	leader: boolean;
 }
 export type Player = {
 	id: string;
@@ -122,7 +136,12 @@ export type Player = {
 	money: number;
 	color: string;
 	votes: number;
-	properties: number[];
+	properties: Property[];
+	leader: boolean;
+};
+export type Property = {
+	id: number;
+	rank: number;
 };
 export interface Room {
 	roomKey: string;
@@ -133,4 +152,8 @@ export interface Room {
 export interface TradeData {
 	amount: number;
 	properties: number[];
+}
+export interface RoomData {
+	roomKey: string;
+	name: string;
 }

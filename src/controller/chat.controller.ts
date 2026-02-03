@@ -1,6 +1,6 @@
 import type { Server, Socket } from "socket.io";
-import { addRoomMessage } from "@/lib/chat_storage";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
+import { addRoomMessage } from "@/lib/storage/chat_storage";
 import type {
 	ClientToServerEvents,
 	InterServerEvents,

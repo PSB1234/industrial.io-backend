@@ -1,17 +1,25 @@
-# Industial.io
+# Industrial.io Backend
 
-This is a Industial.io project's backend part. Currently the work is in progress. 
+This is the backend server for **Industrial.io**, a real-time multiplayer Monopoly-like board game. It handles game logic, room management, and player communication using WebSockets and HTTP APIs.
 
-## What's Industial.io? 
+## Features
 
-It's a monopoly-like board game. 
+- **Real-time Communication**: Powered by Socket.io for instant game updates and chat.
+- **Room Management**: Create, join, and manage game rooms.
+- **Game Logic**: Centralized game state management for the board game mechanics.
+- **Chat System**: In-game chat functionality for players.
+- **Type Safety**: Built with TypeScript and Zod for robust data validation.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs.
-### Frontend:
-- [Next.js](https://nextjs.org)
-- [8bitcn](https://www.8bitcn.com/)
-- [Tailwind CSS](https://tailwindcss.com)
-### Backend:
-- [Socket.io](https://socket.io/)
-- [Express](https://expressjs.com/)
+## Tech Stack
 
+- **Runtime**: [Node.js](https://nodejs.org/)
+- **Framework**: [Express.js](https://expressjs.com/)
+- **Real-time**: [Socket.io](https://socket.io/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Validation**: [Zod](https://zod.dev/)
+- **Tooling**: [Biome](https://biomejs.dev/) (Formatter/Linter), [tsx](https://github.com/privatenumber/tsx) (Dev server)
+
+## Prerequisites
+
+- **Node.js** (v18 or higher recommended)
+- **pnpm** (Package manager)
