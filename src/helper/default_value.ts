@@ -1,0 +1,1 @@
+export const DEFAULT_STARTING_MONEY = 2500;

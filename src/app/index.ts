@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
 import cors from "cors";
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { initializeSocket } from "@/app/socket";
+import { getAllWaitingRooms } from "@/db/queries/room";
 
 //create express app
 const app: Express = express();
@@ -15,7 +16,18 @@ app.use(
 	}),
 );
 app.use(express.json());
-//routes
+
+// REST API routes for initial data fetching
+app.get("/api/rooms", async (_req: Request, res: Response) => {
+	try {
+		const roomsData = await getAllWaitingRooms();
+		res.json({ data: roomsData });
+	} catch (error) {
+		console.error("Error fetching rooms via REST:", error);
+		res.status(500).json({ error: "Failed to fetch rooms" });
+	}
+});
+
 //create http server
 const httpServer = createServer(app);
 const port = 8080;

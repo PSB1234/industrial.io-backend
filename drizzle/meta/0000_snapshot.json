@@ -1,0 +1,549 @@
+{
+	"id": "02f869d8-c197-44ec-ba0e-af8b68ad7b95",
+	"prevId": "00000000-0000-0000-0000-000000000000",
+	"version": "7",
+	"dialect": "postgresql",
+	"tables": {
+		"public.chat_messages": {
+			"name": "chat_messages",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"room_id": {
+					"name": "room_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"player_id": {
+					"name": "player_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"message": {
+					"name": "message",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"chat_messages_room_id_rooms_id_fk": {
+					"name": "chat_messages_room_id_rooms_id_fk",
+					"tableFrom": "chat_messages",
+					"tableTo": "rooms",
+					"columnsFrom": ["room_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"chat_messages_player_id_players_id_fk": {
+					"name": "chat_messages_player_id_players_id_fk",
+					"tableFrom": "chat_messages",
+					"tableTo": "players",
+					"columnsFrom": ["player_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.kick_votes": {
+			"name": "kick_votes",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"room_id": {
+					"name": "room_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"target_player_id": {
+					"name": "target_player_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"voter_id": {
+					"name": "voter_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"kick_votes_room_id_rooms_id_fk": {
+					"name": "kick_votes_room_id_rooms_id_fk",
+					"tableFrom": "kick_votes",
+					"tableTo": "rooms",
+					"columnsFrom": ["room_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"kick_votes_target_player_id_players_id_fk": {
+					"name": "kick_votes_target_player_id_players_id_fk",
+					"tableFrom": "kick_votes",
+					"tableTo": "players",
+					"columnsFrom": ["target_player_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"kick_votes_voter_id_players_id_fk": {
+					"name": "kick_votes_voter_id_players_id_fk",
+					"tableFrom": "kick_votes",
+					"tableTo": "players",
+					"columnsFrom": ["voter_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"kick_votes_room_id_target_player_id_voter_id_unique": {
+					"name": "kick_votes_room_id_target_player_id_voter_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["room_id", "target_player_id", "voter_id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.players": {
+			"name": "players",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"user_id": {
+					"name": "user_id",
+					"type": "varchar",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"socket_id": {
+					"name": "socket_id",
+					"type": "varchar",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"room_id": {
+					"name": "room_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"username": {
+					"name": "username",
+					"type": "varchar(20)",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"rank": {
+					"name": "rank",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"money": {
+					"name": "money",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"color": {
+					"name": "color",
+					"type": "varchar(10)",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"is_leader": {
+					"name": "is_leader",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"joined_at": {
+					"name": "joined_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"players_room_id_rooms_id_fk": {
+					"name": "players_room_id_rooms_id_fk",
+					"tableFrom": "players",
+					"tableTo": "rooms",
+					"columnsFrom": ["room_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"players_room_id_user_id_unique": {
+					"name": "players_room_id_user_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["room_id", "user_id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.properties": {
+			"name": "properties",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"room_id": {
+					"name": "room_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"player_id": {
+					"name": "player_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"property_id": {
+					"name": "property_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"rank": {
+					"name": "rank",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"properties_room_id_rooms_id_fk": {
+					"name": "properties_room_id_rooms_id_fk",
+					"tableFrom": "properties",
+					"tableTo": "rooms",
+					"columnsFrom": ["room_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"properties_player_id_players_id_fk": {
+					"name": "properties_player_id_players_id_fk",
+					"tableFrom": "properties",
+					"tableTo": "players",
+					"columnsFrom": ["player_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"properties_room_id_property_id_unique": {
+					"name": "properties_room_id_property_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["room_id", "property_id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.room_options": {
+			"name": "room_options",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"room_id": {
+					"name": "room_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"free_parking_money": {
+					"name": "free_parking_money",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"pass_go_money_amount": {
+					"name": "pass_go_money_amount",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"allow_trading": {
+					"name": "allow_trading",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"allow_mortgaging_properties": {
+					"name": "allow_mortgaging_properties",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"auction_properties": {
+					"name": "auction_properties",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"speed_up_game_mode": {
+					"name": "speed_up_game_mode",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"number_of_players": {
+					"name": "number_of_players",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"starting_money": {
+					"name": "starting_money",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"allow_players_to_join_mid_game": {
+					"name": "allow_players_to_join_mid_game",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"turn_time_limit": {
+					"name": "turn_time_limit",
+					"type": "turn_time_limit",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"auto_roll_dice_after_timeout": {
+					"name": "auto_roll_dice_after_timeout",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"bankruptcy_handling": {
+					"name": "bankruptcy_handling",
+					"type": "bankruptcy_handling",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"allow_chat": {
+					"name": "allow_chat",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"game_ends_when_only_one_player_remains": {
+					"name": "game_ends_when_only_one_player_remains",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"room_options_room_id_rooms_id_fk": {
+					"name": "room_options_room_id_rooms_id_fk",
+					"tableFrom": "room_options",
+					"tableTo": "rooms",
+					"columnsFrom": ["room_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"room_options_room_id_unique": {
+					"name": "room_options_room_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["room_id"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.rooms": {
+			"name": "rooms",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"room_key": {
+					"name": "room_key",
+					"type": "varchar(10)",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "varchar(20)",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"status": {
+					"name": "status",
+					"type": "room_status",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'waiting'"
+				},
+				"type": {
+					"name": "type",
+					"type": "room_type",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'public'"
+				},
+				"password": {
+					"name": "password",
+					"type": "varchar(20)",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"current_turn": {
+					"name": "current_turn",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
+				"rank_sequence": {
+					"name": "rank_sequence",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"rooms_room_key_unique": {
+					"name": "rooms_room_key_unique",
+					"nullsNotDistinct": false,
+					"columns": ["room_key"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		}
+	},
+	"enums": {
+		"public.bankruptcy_handling": {
+			"name": "bankruptcy_handling",
+			"schema": "public",
+			"values": ["strict", "forgiving"]
+		},
+		"public.room_status": {
+			"name": "room_status",
+			"schema": "public",
+			"values": ["waiting", "playing", "finished"]
+		},
+		"public.room_type": {
+			"name": "room_type",
+			"schema": "public",
+			"values": ["public", "private"]
+		},
+		"public.turn_time_limit": {
+			"name": "turn_time_limit",
+			"schema": "public",
+			"values": ["30", "60", "unlimited"]
+		}
+	},
+	"schemas": {},
+	"sequences": {},
+	"roles": {},
+	"policies": {},
+	"views": {},
+	"_meta": {
+		"columns": {},
+		"schemas": {},
+		"tables": {}
+	}
+}

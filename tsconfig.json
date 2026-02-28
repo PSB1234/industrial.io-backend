@@ -13,12 +13,12 @@
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
 		"allowImportingTsExtensions": true,
-        "noEmit": true,
+		"noEmit": true,
 		"module": "es2022",
 		"outDir": "dist",
 		"sourceMap": true,
 		"lib": ["es2022"],
-		"rootDir": "./src",
+		"rootDir": "./",
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["src/*"]

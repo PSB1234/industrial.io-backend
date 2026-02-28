@@ -1,78 +1,103 @@
-import type { Server, Socket } from "socket.io";
-import { numberOfPlayersInRoom } from "@/helper";
+import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
-import {
-	addMoney,
-	deductMoney,
-	getMoney,
-	updateMoney,
-} from "@/lib/storage/money_storage";
-import { updatePosition } from "@/lib/storage/position_storage";
-import {
-	assignProperty,
-	getPropertyRank,
-	removeProperty,
-} from "@/lib/storage/properties_storage";
-import { setTurn } from "@/lib/storage/turn_storage";
-import type {
-	ClientToServerEvents,
-	InterServerEvents,
-	ServerToClientEvents,
-	SocketData,
-} from "@/types/type";
+import * as gameService from "@/service/game.service";
+import type { AppServer, AppSocket } from "@/types/type";
 
-export function registerGameController(
-	io: Server<
-		ClientToServerEvents,
-		ServerToClientEvents,
-		InterServerEvents,
-		SocketData
-	>,
-	socket: Socket<ClientToServerEvents, ServerToClientEvents>,
-) {
-	socket.on(SOCKET_EVENTS.SEND_TURN, (currentTurn: number, roomKey: string) => {
-		const totalPlayers = numberOfPlayersInRoom(io, roomKey);
-		let nextTurn = currentTurn + 1;
-		if (nextTurn > totalPlayers) {
-			nextTurn = 1;
-		}
-		setTurn(roomKey, nextTurn);
-		console.log(`DEBUG: Turn changed. Room: ${roomKey}, New Turn: ${nextTurn}`);
-		io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, nextTurn);
-	});
+export function registerGameController(io: AppServer, socket: AppSocket) {
+	socket.on(
+		SOCKET_EVENTS.SEND_TURN,
+		async (currentTurn: number, roomKey: string) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
+
+				const result = await gameService.advanceTurn(
+					roomKey,
+					roomId,
+					currentTurn,
+				);
+				if (!result) return;
+
+				io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, result.nextTurn);
+			} catch (error) {
+				console.error("Error advancing turn:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to advance turn");
+			}
+		},
+	);
+
 	socket.on(SOCKET_EVENTS.SEND_DICE_ROLL, (diceRoll, roomKey) => {
 		io.to(roomKey).emit(SOCKET_EVENTS.GET_DICE_ROLL, diceRoll);
 	});
-	socket.on(SOCKET_EVENTS.SEND_POSITION, (dice, roomKey) => {
-		socket.data.position = (dice + socket.data.position) % 32;
-		updatePosition(roomKey, socket.data.userid, socket.data.position);
-		io.to(roomKey).emit(
-			SOCKET_EVENTS.RECEIVE_POSITION,
-			socket.data.position,
-			socket.data.userid,
-		);
+
+	socket.on(SOCKET_EVENTS.SEND_POSITION, async (dice, roomKey) => {
+		try {
+			const roomId = await resolveRoomId(roomKey, socket);
+			if (!roomId) return;
+
+			const result = await gameService.updatePosition(
+				roomId,
+				socket.data.userid,
+				socket.data.position,
+				dice,
+			);
+
+			socket.data.position = result.newPosition;
+
+			io.to(roomKey).emit(
+				SOCKET_EVENTS.RECEIVE_POSITION,
+				result.newPosition,
+				result.userId,
+			);
+		} catch (error) {
+			console.error("Error updating position:", error);
+			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update position");
+		}
 	});
-	socket.on(SOCKET_EVENTS.SEND_MONEY, (amount, clientUserId, roomKey) => {
-		socket.data.money += amount;
-		// Persist money change to room storage
-		updateMoney(roomKey, socket.data.userid, socket.data.money);
-		console.log(
-			`DEBUG: SEND_MONEY received. Amount: ${amount}, Money: ${socket.data.money}, User: ${socket.data.userid}, Room: ${roomKey}`,
-		);
-		io.to(roomKey).emit(
-			SOCKET_EVENTS.RECEIVE_MONEY,
-			socket.data.money,
-			clientUserId,
-		);
-		console.log(`DEBUG: Emitted RECEIVE_MONEY to room ${roomKey}`);
+
+	socket.on(SOCKET_EVENTS.SEND_MONEY, async (amount, clientUserId, roomKey) => {
+		try {
+			const roomId = await resolveRoomId(roomKey, socket);
+			if (!roomId) return;
+
+			const result = await gameService.updateMoney(
+				roomId,
+				socket.data.userid,
+				socket.data.money,
+				amount,
+			);
+
+			socket.data.money = result.newBalance;
+
+			io.to(roomKey).emit(
+				SOCKET_EVENTS.RECEIVE_MONEY,
+				result.newBalance,
+				clientUserId,
+			);
+		} catch (error) {
+			console.error("Error updating money:", error);
+			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update money");
+		}
 	});
-	socket.on(SOCKET_EVENTS.BUY_PROPERTY, (propertyId, userId, roomkey) => {
-		assignProperty(roomkey, userId, propertyId);
-		console.log(
-			`DEBUG: BUY_PROPERTY received. PropertyId: ${propertyId}, User: ${userId}, Room: ${roomkey}`,
-		);
-		io.to(roomkey).emit(SOCKET_EVENTS.PROPERTY_BOUGHT, propertyId, userId);
+
+	socket.on(SOCKET_EVENTS.BUY_PROPERTY, async (propertyId, userId, roomKey) => {
+		try {
+			const roomId = await resolveRoomId(roomKey, socket);
+			if (!roomId) return;
+
+			const result = await gameService.buyProperty(roomId, userId, propertyId);
+
+			io.to(roomKey).emit(
+				SOCKET_EVENTS.PROPERTY_BOUGHT,
+				result.propertyId,
+				result.userId,
+			);
+		} catch (error) {
+			console.error("Error buying property:", error);
+			socket.emit(SOCKET_EVENTS.ERROR, "Failed to buy property");
+		}
 	});
+
 	socket.on(
 		SOCKET_EVENTS.SEND_TRADE_OFFER,
 		(userId, playerId, roomKey, tradeData) => {
@@ -84,87 +109,87 @@ export function registerGameController(
 			);
 		},
 	);
+
 	socket.on(
 		SOCKET_EVENTS.CONFIRM_TRADE_OFFER,
-		(fromPlayer, toPlayer, roomKey, tradeData, accepted) => {
-			if (accepted === "accepted") {
-				if (tradeData.offer) {
-					// fromPlayer gives to toPlayer
-					const moneyOffered = tradeData.offer.amount;
-					const propertyOffered = tradeData.offer.properties;
-					deductMoney(roomKey, fromPlayer, moneyOffered);
-					addMoney(roomKey, toPlayer, moneyOffered);
-					propertyOffered.forEach((propertyId) => {
-						const rank = getPropertyRank(roomKey, fromPlayer, propertyId);
-						removeProperty(roomKey, fromPlayer, propertyId);
-						assignProperty(roomKey, toPlayer, propertyId, rank);
-						io.to(roomKey).emit(
-							SOCKET_EVENTS.PROPERTY_BOUGHT,
-							propertyId,
-							toPlayer,
-						);
-					});
+		async (fromPlayer, toPlayer, roomKey, tradeData, accepted) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
+
+				const result = await gameService.confirmTrade(
+					roomId,
+					fromPlayer,
+					toPlayer,
+					tradeData,
+					accepted,
+				);
+
+				// Emit property transfers
+				for (const transfer of result.transferredProperties) {
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.PROPERTY_BOUGHT,
+						transfer.propertyId,
+						transfer.toUserId,
+					);
 				}
 
-				if (tradeData.request) {
-					// fromPlayer takes from toPlayer
-					const moneyRequested = tradeData.request.amount;
-					const propertyRequested = tradeData.request.properties;
-					deductMoney(roomKey, toPlayer, moneyRequested);
-					addMoney(roomKey, fromPlayer, moneyRequested);
-					propertyRequested.forEach((propertyId) => {
-						const rank = getPropertyRank(roomKey, toPlayer, propertyId);
-						removeProperty(roomKey, toPlayer, propertyId);
-						assignProperty(roomKey, fromPlayer, propertyId, rank);
-						io.to(roomKey).emit(
-							SOCKET_EVENTS.PROPERTY_BOUGHT,
-							propertyId,
-							fromPlayer,
-						);
-					});
-				}
+				// Broadcast updated balances
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_MONEY,
+					result.fromBalance,
+					result.fromPlayer,
+				);
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_MONEY,
+					result.toBalance,
+					result.toPlayer,
+				);
+
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_CONFIRM_TRADE_OFFER,
+					result.fromPlayer,
+					result.toPlayer,
+					roomKey,
+					result.tradeData,
+					result.accepted,
+				);
+			} catch (error) {
+				console.error("Error confirming trade:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to confirm trade");
 			}
-			io.to(roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_MONEY,
-				getMoney(roomKey, fromPlayer),
-				fromPlayer,
-			);
-			io.to(roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_MONEY,
-				getMoney(roomKey, toPlayer),
-				toPlayer,
-			);
-
-			io.to(roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_CONFIRM_TRADE_OFFER,
-				fromPlayer,
-				toPlayer,
-				roomKey,
-				tradeData,
-				accepted === "accepted",
-			);
 		},
 	);
+
 	socket.on(
 		SOCKET_EVENTS.UPGRADE_PROPERTY,
-		(propertyId, userId, roomKey, upgradeCost) => {
-			const currentRank = getPropertyRank(roomKey, userId, propertyId);
-			if (currentRank < 5) {
-				// Upgrade property rank
-				removeProperty(roomKey, userId, propertyId);
-				assignProperty(roomKey, userId, propertyId, currentRank + 1);
-				addMoney(roomKey, userId, -upgradeCost);
-				const newBalance = getMoney(roomKey, userId);
-				io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_MONEY, newBalance, userId);
-				console.log(
-					`DEBUG: UPGRADE_PROPERTY received. PropertyId: ${propertyId}, User: ${userId}, Room: ${roomKey}`,
+		async (propertyId, userId, roomKey, upgradeCost) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
+
+				const result = await gameService.upgradeProperty(
+					roomId,
+					userId,
+					propertyId,
+					upgradeCost,
+				);
+				if (!result) return;
+
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_MONEY,
+					result.newBalance,
+					result.userId,
 				);
 				io.to(roomKey).emit(
 					SOCKET_EVENTS.PROPERTY_UPGRADED,
-					propertyId,
-					userId,
-					currentRank + 1,
+					result.propertyId,
+					result.userId,
+					result.newRank,
 				);
+			} catch (error) {
+				console.error("Error upgrading property:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to upgrade property");
 			}
 		},
 	);

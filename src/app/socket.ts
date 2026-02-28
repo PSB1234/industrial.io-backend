@@ -11,24 +11,32 @@ import { registerGameController } from "@/controller/game.controller";
 import { registerRoomController } from "@/controller/room.controller";
 import {
 	computeUserId,
-	getTotalRooms,
 	handleConnection,
 	handleDisconnection,
+	isUserConnected,
 } from "@/helper";
+import {
+	broadcastRoomList,
+	notifyPlayerLeft,
+	resolveRoomId,
+} from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
-import { removeColor } from "@/lib/storage/color_storage";
-import { removeMoney } from "@/lib/storage/money_storage";
-import { removePosition } from "@/lib/storage/position_storage";
-import { removeAllPlayerProperties } from "@/lib/storage/properties_storage";
-import { removeRank } from "@/lib/storage/rank_storage";
+import {
+	cancelPendingDisconnect,
+	schedulePendingDisconnect,
+} from "@/lib/storage/disconnect_storage";
+import { stopRoomTimer } from "@/lib/storage/timer_storage";
+import * as roomService from "@/service/room.service";
 import type {
+	AppServer,
 	ClientToServerEvents,
 	InterServerEvents,
 	ServerToClientEvents,
 	SocketData,
 } from "@/types/type";
+
 export function initializeSocket(httpServer: import("node:http").Server) {
-	const io = new Server<
+	const io: AppServer = new Server<
 		ClientToServerEvents,
 		ServerToClientEvents,
 		InterServerEvents,
@@ -40,7 +48,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 		},
 	});
 
-	io.on("connection", (socket) => {
+	io.on("connection", async (socket) => {
 		try {
 			const authUsername = socket.handshake.auth.username as string | undefined;
 			socket.data.name =
@@ -52,29 +60,75 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 			const authUserId = socket.handshake.auth.userId as string | undefined;
 			socket.data.userid = authUserId || randomUUID();
 			socket.data.socketid = socket.id;
+			socket.data.roomKey = "";
+			socket.data.dbRoomId = 0;
+			socket.data.dbPlayerId = 0;
 			socket.data.rank = 0;
-			// Money will be assigned when joining a room
+			socket.data.position = 0;
+			socket.data.money = 0;
+			socket.data.color = "#000000";
+			socket.data.properties = [];
+			socket.data.leader = false;
+
 			const userId: string = computeUserId(socket);
 			const hasConnected = handleConnection(userId);
+
+			const wasPending = cancelPendingDisconnect(userId);
+			if (wasPending) {
+				console.log(`User ${userId} reconnected, cancelled pending disconnect`);
+			}
 
 			if (hasConnected) {
 				io.emit(SOCKET_EVENTS.USER_CONNECTED, socket.data.name);
 			}
 			socket.emit(SOCKET_EVENTS.USERNAME_ASSIGNED, socket.data.name);
-			socket.emit(SOCKET_EVENTS.GET_ALL_ROOMS, getTotalRooms(io));
 
+			// Register all handlers FIRST (synchronous)
 			registerRoomController(io, socket);
 			registerChatController(io, socket);
 			registerGameController(io, socket);
-			// Handle disconnection
-			socket.on("disconnect", () => {
+
+			socket.on("disconnect", async () => {
 				try {
-					socket.emit(SOCKET_EVENTS.USER_DISCONNECTED, userId);
+					const isFullyDisconnected = handleDisconnection(userId);
+					if (!isFullyDisconnected) return;
+
+					const roomKey = socket.data.roomKey;
+					if (!roomKey) return;
+
+					const roomId = await resolveRoomId(roomKey, socket);
+					if (!roomId) return;
+
+					console.log(
+						`User ${userId} disconnected from room ${roomKey}, scheduling cleanup`,
+					);
+
+					schedulePendingDisconnect(userId, async () => {
+						if (isUserConnected(userId)) {
+							console.log(
+								`User ${userId} already reconnected, skipping cleanup`,
+							);
+							return;
+						}
+
+						console.log(
+							`Grace period expired for ${userId}, cleaning up room ${roomKey}`,
+						);
+						const result = await roomService.leaveRoom(roomId, roomKey, userId);
+						notifyPlayerLeft(io, roomKey, result.userId);
+						if (result.roomEmpty) {
+							stopRoomTimer(roomKey);
+						}
+						await broadcastRoomList(io);
+					});
 				} catch (error) {
 					console.error("Error handling disconnect:", error);
 				}
 			});
-			// Handle errors
+
+			// THEN do async work
+			await broadcastRoomList(io);
+
 			socket.on("error", (error) => {
 				console.error("Socket error:", error);
 			});

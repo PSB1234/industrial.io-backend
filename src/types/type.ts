@@ -1,7 +1,19 @@
+import type { Server, Socket } from "socket.io";
 import type z from "zod";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import type { createRoomSchema } from "@/types/zod";
-
+export type PlayerSnapshot = {
+	id: string;
+	socketid: string;
+	username: string;
+	rank: number;
+	position: number;
+	money: number;
+	color: string;
+	votes: number;
+	properties: { id: number; rank: number }[];
+	leader: boolean;
+};
 export interface ServerToClientEvents {
 	[SOCKET_EVENTS.USER_CONNECTED]: (username: string) => void;
 	[SOCKET_EVENTS.USER_DISCONNECTED]: (userId: string) => void;
@@ -43,6 +55,9 @@ export interface ServerToClientEvents {
 	[SOCKET_EVENTS.CHAT_HISTORY]: (
 		messages: Array<{ message: string; username: string }>,
 	) => void;
+	[SOCKET_EVENTS.TIMER_TICK]: (remainingSeconds: number) => void;
+	[SOCKET_EVENTS.TIMER_EXPIRED]: () => void;
+	[SOCKET_EVENTS.ROOM_AUTO_DELETED]: (roomKey: string) => void;
 	connect: () => void;
 	disconnect: (reason: string) => void;
 	reconnect: () => void;
@@ -72,7 +87,10 @@ export interface ClientToServerEvents {
 		userid: string,
 		roomKey: string,
 	) => void;
-	[SOCKET_EVENTS.JOIN_RANDOM_ROOM]: (color: string) => void;
+	[SOCKET_EVENTS.JOIN_RANDOM_ROOM]: (
+		color: string,
+		callback: (roomKey: string, playerList: Player[]) => void,
+	) => void;
 	[SOCKET_EVENTS.CHANGE_ROOM_STATUS]: (
 		roomKey: string,
 		status: "waiting" | "playing" | "finished",
@@ -120,6 +138,8 @@ export interface SocketData {
 	roomKey: string;
 	socketid: string;
 	userid: string;
+	dbRoomId: number;
+	dbPlayerId: number;
 	rank: number;
 	position: number;
 	money: number;
@@ -157,3 +177,83 @@ export interface RoomData {
 	roomKey: string;
 	name: string;
 }
+
+// ── Service result types ─────────────────────────────────────────
+
+export type CreateRoomResult = {
+	roomKey: string;
+	roomId: number;
+	player: {
+		id: number;
+		rank: number;
+		position: number;
+		money: number;
+		leader: boolean;
+	};
+	players: PlayerSnapshot[];
+	playerSnapshot: Player;
+	currentTurn: number;
+	votedPlayers: string[];
+};
+
+export type JoinRoomResult = {
+	roomKey: string;
+	roomId: number;
+	player: {
+		id: number;
+		rank: number;
+		position: number;
+		money: number;
+		leader: boolean;
+	};
+	players: PlayerSnapshot[];
+	chatHistory: Array<{ message: string; username: string }>;
+	currentTurn: number;
+	votedPlayers: string[];
+	playerSnapshot: Player;
+};
+
+export type TurnResult = { nextTurn: number };
+export type PositionResult = { newPosition: number; userId: string };
+export type MoneyResult = { newBalance: number; userId: string };
+export type BuyPropertyResult = { propertyId: number; userId: string };
+export type UpgradeResult = {
+	propertyId: number;
+	userId: string;
+	newRank: number;
+	newBalance: number;
+} | null;
+export type TradeConfirmResult = {
+	fromPlayer: string;
+	toPlayer: string;
+	fromBalance: number;
+	toBalance: number;
+	accepted: boolean;
+	tradeData: { offer: TradeData; request: TradeData };
+	transferredProperties: Array<{ propertyId: number; toUserId: string }>;
+};
+export type VoteResult = {
+	playerId: string;
+	currentVotes: number;
+	voterId: string;
+};
+export type ChangeStatusResult = {
+	oldStatus: string;
+	newStatus: string;
+	timerAction: "start" | "stop" | "none";
+};
+export type LeaveResult = { userId: string; roomEmpty: boolean };
+
+// Convenience aliases to avoid repeating the 4 generics everywhere
+export type AppServer = Server<
+	ClientToServerEvents,
+	ServerToClientEvents,
+	InterServerEvents,
+	SocketData
+>;
+export type AppSocket = Socket<
+	ClientToServerEvents,
+	ServerToClientEvents,
+	InterServerEvents,
+	SocketData
+>;

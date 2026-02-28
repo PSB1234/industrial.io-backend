@@ -4,6 +4,8 @@ import { z } from "zod";
 export const env = createEnv({
 	server: {
 		fronted_url: z.url(),
+		DATABASE_URL: z.url(),
+		REDIS_URL: z.url(),
 	},
 	runtimeEnv: process.env,
 	emptyStringAsUndefined: true,
