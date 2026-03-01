@@ -106,29 +106,28 @@ export async function confirmTrade(
 
 	if (accepted === "accepted") {
 		if (tradeData.offer) {
-			await transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount);
-			const transferred = await transferProperties(
-				roomId,
-				fromPlayer,
-				toPlayer,
-				tradeData.offer.properties,
-			);
+			const [transferred] = await Promise.all([
+				transferProperties(
+					roomId,
+					fromPlayer,
+					toPlayer,
+					tradeData.offer.properties,
+				),
+				transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount),
+			]);
 			transferredProperties.push(...transferred);
 		}
 
 		if (tradeData.request) {
-			await transferMoney(
-				roomId,
-				toPlayer,
-				fromPlayer,
-				tradeData.request.amount,
-			);
-			const transferred = await transferProperties(
-				roomId,
-				toPlayer,
-				fromPlayer,
-				tradeData.request.properties,
-			);
+			const [transferred] = await Promise.all([
+				transferProperties(
+					roomId,
+					fromPlayer,
+					toPlayer,
+					tradeData.offer.properties,
+				),
+				transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount),
+			]);
 			transferredProperties.push(...transferred);
 		}
 	}

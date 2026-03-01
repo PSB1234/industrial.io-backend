@@ -131,39 +131,39 @@ export async function getPlayersInRoom(
 	const cachedPlayers = await getCache<PlayerSnapshot[]>(cacheKey);
 	if (cachedPlayers) return cachedPlayers;
 
-	const playerRows = await db
-		.select({
-			dbId: players.id,
-			id: players.userId,
-			socketid: players.socketId,
-			username: players.username,
-			rank: players.rank,
-			position: players.position,
-			money: players.money,
-			color: players.color,
-			leader: players.isLeader,
-		})
-		.from(players)
-		.where(eq(players.roomId, roomId))
-		.orderBy(asc(players.rank));
-
-	const propertyRows = await db
-		.select({
-			playerId: properties.playerId,
-			id: properties.propertyId,
-			rank: properties.rank,
-		})
-		.from(properties)
-		.where(eq(properties.roomId, roomId));
-
-	const voteRows = await db
-		.select({
-			targetPlayerId: kickVotes.targetPlayerId,
-			votes: count(kickVotes.id),
-		})
-		.from(kickVotes)
-		.where(eq(kickVotes.roomId, roomId))
-		.groupBy(kickVotes.targetPlayerId);
+	const [playerRows, propertyRows, voteRows] = await Promise.all([
+		db
+			.select({
+				dbId: players.id,
+				id: players.userId,
+				socketid: players.socketId,
+				username: players.username,
+				rank: players.rank,
+				position: players.position,
+				money: players.money,
+				color: players.color,
+				leader: players.isLeader,
+			})
+			.from(players)
+			.where(eq(players.roomId, roomId))
+			.orderBy(asc(players.rank)),
+		db
+			.select({
+				playerId: properties.playerId,
+				id: properties.propertyId,
+				rank: properties.rank,
+			})
+			.from(properties)
+			.where(eq(properties.roomId, roomId)),
+		db
+			.select({
+				targetPlayerId: kickVotes.targetPlayerId,
+				votes: count(kickVotes.id),
+			})
+			.from(kickVotes)
+			.where(eq(kickVotes.roomId, roomId))
+			.groupBy(kickVotes.targetPlayerId),
+	]);
 
 	const propertiesByPlayer = new Map<number, { id: number; rank: number }[]>();
 	for (const property of propertyRows) {

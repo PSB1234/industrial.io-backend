@@ -5,6 +5,7 @@ import { db } from "..";
 import { delCache, getCache, setCache } from "../redis";
 import { rooms } from "../schema";
 
+//cache for rooms list
 const WAITING_ROOMS_CACHE_KEY = "rooms:waiting:all";
 
 export async function createRoom(

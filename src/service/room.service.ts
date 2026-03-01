@@ -15,7 +15,7 @@ import {
 	setRoomStatus,
 } from "@/db/queries/room";
 import { addVote, getVotedPlayers, getVotes } from "@/db/queries/votes";
-import { generateRoomId, numberOfPlayersInRoom } from "@/helper";
+import { generateRoomId } from "@/helper";
 import { checkRoomCapacity } from "@/helper/room_utils";
 import { deleteRoom } from "@/lib/utils/room_cleanup";
 import type {
@@ -60,16 +60,16 @@ export async function createRoom(
 		color,
 		true,
 	);
-	await clearRoomMessages(roomId);
 
-	const players = await getPlayersInRoom(roomId);
-	const currentTurn = await getCurrentTurn(roomKey);
-	const votedPlayers = await getVotedPlayers(roomId, userId);
-
-	const [playerProperties, playerVotes] = await Promise.all([
-		getPlayerPropertiesWithRanks(roomId, userId),
-		getVotes(roomId, userId),
-	]);
+	const [players, currentTurn, votedPlayers, playerProperties, playerVotes] =
+		await Promise.all([
+			getPlayersInRoom(roomId),
+			getCurrentTurn(roomKey),
+			getVotedPlayers(roomId, userId),
+			getPlayerPropertiesWithRanks(roomId, userId),
+			getVotes(roomId, userId),
+			clearRoomMessages(roomId),
+		]);
 
 	const playerSnapshot: Player = {
 		id: userId,
@@ -112,22 +112,27 @@ export async function joinRoom(
 		throw new Error(capacity.reason || "Room Limit Reached");
 	}
 
-	const currentCount = await numberOfPlayersInRoom(room.id);
 	const player = await createPlayer(
 		room.id,
 		userId,
 		socketId,
 		username,
 		color,
-		currentCount === 0,
+		capacity.count === 0,
 	);
 
-	const players = await getPlayersInRoom(room.id);
-	const chatHistory = await getRoomMessages(room.id);
-	const currentTurn = await getCurrentTurn(roomKey);
-	const votedPlayers = await getVotedPlayers(room.id, userId);
-
-	const [playerProperties, playerVotes] = await Promise.all([
+	const [
+		players,
+		chatHistory,
+		currentTurn,
+		votedPlayers,
+		playerProperties,
+		playerVotes,
+	] = await Promise.all([
+		getPlayersInRoom(room.id),
+		getRoomMessages(room.id),
+		getCurrentTurn(roomKey),
+		getVotedPlayers(room.id, userId),
 		getPlayerPropertiesWithRanks(room.id, userId),
 		getVotes(room.id, userId),
 	]);
