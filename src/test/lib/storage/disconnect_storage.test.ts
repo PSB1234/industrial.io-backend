@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	cancelPendingDisconnect,
 	schedulePendingDisconnect,
-} from "../disconnect_storage";
+} from "@/lib/storage/disconnect_storage";
 
 describe("disconnect_storage", () => {
 	beforeEach(() => {

@@ -71,7 +71,7 @@ import {
 	joinRoom,
 	leaveRoom,
 	selectRandomRoom,
-} from "../room.service";
+} from "@/service/room.service";
 
 beforeEach(() => {
 	vi.clearAllMocks();

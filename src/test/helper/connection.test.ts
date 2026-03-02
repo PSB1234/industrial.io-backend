@@ -3,7 +3,7 @@ import {
 	handleConnection,
 	handleDisconnection,
 	isUserConnected,
-} from "../index";
+} from "@/helper/index";
 
 // The `users` Map is module-level state. We clean it by disconnecting all
 // users before each test so there's no bleed between tests.

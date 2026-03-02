@@ -5,7 +5,7 @@ import {
 	startRoomTimer,
 	stopRoomTimer,
 	TIMER_DURATION_MS,
-} from "../timer_storage";
+} from "@/lib/storage/timer_storage";
 
 describe("timer_storage", () => {
 	beforeEach(() => {

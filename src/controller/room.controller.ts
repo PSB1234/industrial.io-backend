@@ -1,5 +1,9 @@
 import { computeUserId, numberOfPlayersInRoom } from "@/helper";
 import {
+	resetInactivityTimer,
+	stopInactivityTracking,
+} from "@/helper/inactivity_helpers";
+import {
 	broadcastRoomList,
 	notifyPlayerLeft,
 	resolveRoomId,
@@ -15,111 +19,124 @@ import { createRoomSchema } from "@/types/zod";
 export function registerRoomController(io: AppServer, socket: AppSocket) {
 	// ── Create Room ──────────────────────────────────────────────
 
-	socket.on(SOCKET_EVENTS.CREATE_ROOM, async (options, color, callback) => {
-		try {
-			const { success, data, error } = createRoomSchema.safeParse(options);
-			if (!success) {
-				console.error("Invalid room options:", error);
-				socket.emit(SOCKET_EVENTS.ERROR, "Invalid room options");
-				return;
+	socket.on(
+		SOCKET_EVENTS.CREATE_ROOM,
+		async (options: any, color: string, callback: Function) => {
+			try {
+				const { success, data, error } = createRoomSchema.safeParse(options);
+				if (!success) {
+					console.error("Invalid room options:", error);
+					socket.emit(SOCKET_EVENTS.ERROR, "Invalid room options");
+					return;
+				}
+
+				const result = await roomService.createRoom(
+					data,
+					socket.data.userid,
+					socket.data.socketid,
+					socket.data.name,
+					color,
+				);
+
+				hydrateSocketData(
+					socket,
+					result.roomKey,
+					result.roomId,
+					result.player,
+					color,
+				);
+				socket.join(result.roomKey);
+
+				callback(result.roomKey, result.players);
+
+				startTimerForRoom(io, result.roomKey);
+
+				// Broadcast join state
+				io.to(result.roomKey).emit(
+					SOCKET_EVENTS.GAME_LOOP,
+					result.roomKey,
+					result.playerSnapshot,
+				);
+				io.to(result.roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_TURN,
+					result.currentTurn,
+				);
+				socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
+				await broadcastRoomList(io);
+
+				console.log(
+					`User ${socket.id} created & joined room: ${result.roomKey}`,
+				);
+			} catch (error) {
+				console.error("Error creating room:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Joining Room Failed");
 			}
-
-			const result = await roomService.createRoom(
-				data,
-				socket.data.userid,
-				socket.data.socketid,
-				socket.data.name,
-				color,
-			);
-
-			hydrateSocketData(
-				socket,
-				result.roomKey,
-				result.roomId,
-				result.player,
-				color,
-			);
-			socket.join(result.roomKey);
-
-			callback(result.roomKey, result.players);
-
-			startTimerForRoom(io, result.roomKey);
-
-			// Broadcast join state
-			io.to(result.roomKey).emit(
-				SOCKET_EVENTS.GAME_LOOP,
-				result.roomKey,
-				result.playerSnapshot,
-			);
-			io.to(result.roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_TURN,
-				result.currentTurn,
-			);
-			socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
-			await broadcastRoomList(io);
-
-			console.log(`User ${socket.id} created & joined room: ${result.roomKey}`);
-		} catch (error) {
-			console.error("Error creating room:", error);
-			socket.emit(SOCKET_EVENTS.ERROR, "Joining Room Failed");
-		}
-	});
+		},
+	);
 
 	// ── Join Random Room ─────────────────────────────────────────
 
-	socket.on(SOCKET_EVENTS.JOIN_RANDOM_ROOM, async (color: string, callback) => {
-		try {
-			const result = await roomService.joinRandomRoom(
-				socket.data.userid,
-				socket.data.socketid,
-				socket.data.name,
-				color,
-			);
+	socket.on(
+		SOCKET_EVENTS.JOIN_RANDOM_ROOM,
+		async (color: string, callback: Function) => {
+			try {
+				const result = await roomService.joinRandomRoom(
+					socket.data.userid,
+					socket.data.socketid,
+					socket.data.name,
+					color,
+				);
 
-			hydrateSocketData(
-				socket,
-				result.roomKey,
-				result.roomId,
-				result.player,
-				color,
-			);
-			socket.join(result.roomKey);
+				hydrateSocketData(
+					socket,
+					result.roomKey,
+					result.roomId,
+					result.player,
+					color,
+				);
+				socket.join(result.roomKey);
 
-			io.to(result.roomKey).emit(
-				SOCKET_EVENTS.USER_CONNECTED,
-				socket.data.name,
-			);
-			socket.emit(SOCKET_EVENTS.CHAT_HISTORY, result.chatHistory);
+				io.to(result.roomKey).emit(
+					SOCKET_EVENTS.USER_CONNECTED,
+					socket.data.name,
+				);
+				socket.emit(SOCKET_EVENTS.CHAT_HISTORY, result.chatHistory);
 
-			// Broadcast join state
-			io.to(result.roomKey).emit(
-				SOCKET_EVENTS.GAME_LOOP,
-				result.roomKey,
-				result.playerSnapshot,
-			);
-			io.to(result.roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_TURN,
-				result.currentTurn,
-			);
-			socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
-			await broadcastRoomList(io);
+				// Broadcast join state
+				io.to(result.roomKey).emit(
+					SOCKET_EVENTS.GAME_LOOP,
+					result.roomKey,
+					result.playerSnapshot,
+				);
+				io.to(result.roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_TURN,
+					result.currentTurn,
+				);
+				socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
+				await broadcastRoomList(io);
 
-			if (typeof callback === "function") {
-				callback(result.roomKey, result.players);
+				if (typeof callback === "function") {
+					callback(result.roomKey, result.players);
+				}
+
+				console.log(`User joined room: ${result.roomKey}`);
+			} catch (error) {
+				console.error("Error joining room:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to join room");
 			}
-
-			console.log(`User joined room: ${result.roomKey}`);
-		} catch (error) {
-			console.error("Error joining room:", error);
-			socket.emit(SOCKET_EVENTS.ERROR, "Failed to join room");
-		}
-	});
+		},
+	);
 
 	// ── Join Room ────────────────────────────────────────────────
 
 	socket.on(
 		SOCKET_EVENTS.JOIN_ROOM,
-		async (username: string, roomKey: string, color: string, callback) => {
+		async (
+			username: string,
+			roomKey: string,
+			color: string,
+			callback: Function,
+		) => {
 			try {
 				if (username) {
 					socket.data.name = username;
@@ -173,23 +190,33 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 	// ── Change Room Status ───────────────────────────────────────
 
-	socket.on(SOCKET_EVENTS.CHANGE_ROOM_STATUS, async (roomKey, status) => {
-		try {
-			const result = await roomService.changeRoomStatus(roomKey, status);
+	socket.on(
+		SOCKET_EVENTS.CHANGE_ROOM_STATUS,
+		async (roomKey: string, status: any) => {
+			try {
+				const result = await roomService.changeRoomStatus(roomKey, status);
 
-			if (result.timerAction === "stop") {
-				stopRoomTimer(roomKey);
-			} else if (result.timerAction === "start") {
-				startTimerForRoom(io, roomKey);
+				if (result.timerAction === "stop") {
+					stopRoomTimer(roomKey);
+				} else if (result.timerAction === "start") {
+					startTimerForRoom(io, roomKey);
+				}
+
+				// Start inactivity tracking when game begins, stop otherwise
+				if (result.newStatus === "playing") {
+					resetInactivityTimer(io, roomKey);
+				} else {
+					stopInactivityTracking(roomKey);
+				}
+
+				io.to(roomKey).emit(SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS);
+				await broadcastRoomList(io);
+			} catch (error) {
+				console.error("Error changing room status:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to change room status");
 			}
-
-			io.to(roomKey).emit(SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS);
-			await broadcastRoomList(io);
-		} catch (error) {
-			console.error("Error changing room status:", error);
-			socket.emit(SOCKET_EVENTS.ERROR, "Failed to change room status");
-		}
-	});
+		},
+	);
 
 	// ── Vote to Kick ─────────────────────────────────────────────
 
@@ -242,6 +269,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 					if (leaveResult.roomEmpty) {
 						stopRoomTimer(roomKey);
+						stopInactivityTracking(roomKey);
 					}
 
 					await broadcastRoomList(io);
@@ -273,6 +301,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 				if (result.roomEmpty) {
 					stopRoomTimer(roomKey);
+					stopInactivityTracking(roomKey);
 				}
 
 				await broadcastRoomList(io);
@@ -300,6 +329,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 			if (result.roomEmpty) {
 				stopRoomTimer(roomKey);
+				stopInactivityTracking(roomKey);
 			}
 
 			await broadcastRoomList(io);

@@ -15,7 +15,7 @@ vi.mock("@/helper/room_utils", () => ({
 import { addChatMessage } from "@/db/queries/chat";
 import { getPlayer } from "@/db/queries/player";
 import { resolveRoomId } from "@/helper/room_utils";
-import { sendMessage } from "../chat.service";
+import { sendMessage } from "@/service/chat.service";
 
 beforeEach(() => {
 	vi.clearAllMocks();

@@ -97,14 +97,14 @@ export async function confirmTrade(
 	fromPlayer: string,
 	toPlayer: string,
 	tradeData: { offer: TradeData; request: TradeData },
-	accepted: string,
+	accepted: boolean,
 ): Promise<TradeConfirmResult> {
 	const transferredProperties: Array<{
 		propertyId: number;
 		toUserId: string;
 	}> = [];
 
-	if (accepted === "accepted") {
+	if (accepted) {
 		if (tradeData.offer) {
 			const [transferred] = await Promise.all([
 				transferProperties(
@@ -122,11 +122,11 @@ export async function confirmTrade(
 			const [transferred] = await Promise.all([
 				transferProperties(
 					roomId,
-					fromPlayer,
 					toPlayer,
-					tradeData.offer.properties,
+					fromPlayer,
+					tradeData.request.properties,
 				),
-				transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount),
+				transferMoney(roomId, toPlayer, fromPlayer, tradeData.request.amount),
 			]);
 			transferredProperties.push(...transferred);
 		}
@@ -140,7 +140,7 @@ export async function confirmTrade(
 		toPlayer,
 		fromBalance,
 		toBalance,
-		accepted: accepted === "accepted",
+		accepted,
 		tradeData,
 		transferredProperties,
 	};

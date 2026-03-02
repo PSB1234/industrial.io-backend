@@ -4,24 +4,24 @@
 		"skipLibCheck": true,
 		"moduleResolution": "bundler",
 		"target": "es2022",
-		"allowJs": false,
+		"allowJs": true,
 		"resolveJsonModule": true,
 		"moduleDetection": "force",
 		"isolatedModules": true,
-		"verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": false,
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
-		"allowImportingTsExtensions": true,
 		"noEmit": true,
-		"module": "es2022",
+		"module": "ESNext",
 		"outDir": "dist",
 		"sourceMap": true,
 		"lib": ["es2022"],
-		"rootDir": "./",
+		"rootDir": "./src",
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["src/*"]
 		}
-	}
+	},
+	"include": ["src/**/*"]
 }

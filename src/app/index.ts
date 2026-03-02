@@ -3,13 +3,15 @@ import cors from "cors";
 import express, { type Express, type Request, type Response } from "express";
 import { initializeSocket } from "@/app/socket";
 import { getAllWaitingRooms } from "@/db/queries/room";
+import { env } from "@/env";
+import { connectRedis } from "@/db/redis";
 
 //create express app
 const app: Express = express();
 //middlewares
 app.use(
 	cors({
-		origin: "http://localhost:3000",
+		origin: env.frontend_url,
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"],
@@ -33,6 +35,10 @@ const httpServer = createServer(app);
 const port = 8080;
 //initialize socket
 initializeSocket(httpServer);
+
+// Connect to Redis and then start server
+await connectRedis();
+
 //start server
 httpServer.listen(port, () => {
 	console.log("listening on *:", port);

@@ -36,18 +36,19 @@ export async function resolveRoomId(
 export async function checkRoomCapacity(
 	roomId: number,
 	userId: string,
-): Promise<{ allowed: boolean; reason?: string }> {
+): Promise<{ allowed: boolean; reason?: string; count: number }> {
 	const existingPlayer = await getPlayer(roomId, userId);
-	if (existingPlayer) {
-		return { allowed: true };
-	}
-
 	const count = await getPlayerCountInRoom(roomId);
-	if (count >= MAX_PLAYER_COUNT) {
-		return { allowed: false, reason: "Room Limit Reached" };
+
+	if (existingPlayer) {
+		return { allowed: true, count };
 	}
 
-	return { allowed: true };
+	if (count >= MAX_PLAYER_COUNT) {
+		return { allowed: false, reason: "Room Limit Reached", count };
+	}
+
+	return { allowed: true, count };
 }
 
 export async function broadcastRoomList(io: AppServer): Promise<void> {

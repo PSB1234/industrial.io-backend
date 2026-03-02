@@ -1,3 +1,8 @@
+import { getCurrentTurn } from "@/db/queries/room";
+import {
+	handleActivityConfirmation,
+	resetInactivityTimer,
+} from "@/helper/inactivity_helpers";
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import * as gameService from "@/service/game.service";
@@ -6,19 +11,26 @@ import type { AppServer, AppSocket } from "@/types/type";
 export function registerGameController(io: AppServer, socket: AppSocket) {
 	socket.on(
 		SOCKET_EVENTS.SEND_TURN,
-		async (currentTurn: number, roomKey: string) => {
+		async (_currentTurn: number, roomKey: string) => {
 			try {
 				const roomId = await resolveRoomId(roomKey, socket);
 				if (!roomId) return;
 
+				const authoritativeTurn = await getCurrentTurn(roomKey);
+				if (socket.data.rank !== authoritativeTurn) {
+					socket.emit(SOCKET_EVENTS.ERROR, "Cheeky move! It's not your turn.");
+					return;
+				}
+
 				const result = await gameService.advanceTurn(
 					roomKey,
 					roomId,
-					currentTurn,
+					authoritativeTurn,
 				);
 				if (!result) return;
 
 				io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, result.nextTurn);
+				resetInactivityTimer(io, roomKey);
 			} catch (error) {
 				console.error("Error advancing turn:", error);
 				socket.emit(SOCKET_EVENTS.ERROR, "Failed to advance turn");
@@ -26,14 +38,35 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 		},
 	);
 
-	socket.on(SOCKET_EVENTS.SEND_DICE_ROLL, (diceRoll, roomKey) => {
-		io.to(roomKey).emit(SOCKET_EVENTS.GET_DICE_ROLL, diceRoll);
-	});
+	socket.on(
+		SOCKET_EVENTS.SEND_DICE_ROLL,
+		async (diceRoll: number, roomKey: string) => {
+			const currentTurn = await getCurrentTurn(roomKey);
+			if (socket.data.rank !== currentTurn) {
+				socket.emit(
+					SOCKET_EVENTS.ERROR,
+					"Cheeky move! It's not your turn to roll.",
+				);
+				return;
+			}
+			io.to(roomKey).emit(SOCKET_EVENTS.GET_DICE_ROLL, diceRoll);
+			resetInactivityTimer(io, roomKey);
+		},
+	);
 
-	socket.on(SOCKET_EVENTS.SEND_POSITION, async (dice, roomKey) => {
+	socket.on(SOCKET_EVENTS.SEND_POSITION, async (dice: number, roomKey: string) => {
 		try {
 			const roomId = await resolveRoomId(roomKey, socket);
 			if (!roomId) return;
+
+			const currentTurn = await getCurrentTurn(roomKey);
+			if (socket.data.rank !== currentTurn) {
+				socket.emit(
+					SOCKET_EVENTS.ERROR,
+					"Cheeky move! You can't move out of turn.",
+				);
+				return;
+			}
 
 			const result = await gameService.updatePosition(
 				roomId,
@@ -49,70 +82,95 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				result.newPosition,
 				result.userId,
 			);
+			resetInactivityTimer(io, roomKey);
 		} catch (error) {
 			console.error("Error updating position:", error);
 			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update position");
 		}
 	});
 
-	socket.on(SOCKET_EVENTS.SEND_MONEY, async (amount, clientUserId, roomKey) => {
-		try {
-			const roomId = await resolveRoomId(roomKey, socket);
-			if (!roomId) return;
+	socket.on(
+		SOCKET_EVENTS.SEND_MONEY,
+		async (amount: number, clientUserId: string, roomKey: string) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
 
-			const result = await gameService.updateMoney(
-				roomId,
-				socket.data.userid,
-				socket.data.money,
-				amount,
-			);
+				const result = await gameService.updateMoney(
+					roomId,
+					socket.data.userid,
+					socket.data.money,
+					amount,
+				);
 
-			socket.data.money = result.newBalance;
+				socket.data.money = result.newBalance;
 
-			io.to(roomKey).emit(
-				SOCKET_EVENTS.RECEIVE_MONEY,
-				result.newBalance,
-				clientUserId,
-			);
-		} catch (error) {
-			console.error("Error updating money:", error);
-			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update money");
-		}
-	});
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.RECEIVE_MONEY,
+					result.newBalance,
+					clientUserId,
+				);
+				resetInactivityTimer(io, roomKey);
+			} catch (error) {
+				console.error("Error updating money:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to update money");
+			}
+		},
+	);
 
-	socket.on(SOCKET_EVENTS.BUY_PROPERTY, async (propertyId, userId, roomKey) => {
-		try {
-			const roomId = await resolveRoomId(roomKey, socket);
-			if (!roomId) return;
+	socket.on(
+		SOCKET_EVENTS.BUY_PROPERTY,
+		async (propertyId: number, userId: string, roomKey: string) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
 
-			const result = await gameService.buyProperty(roomId, userId, propertyId);
+				const currentTurn = await getCurrentTurn(roomKey);
+				if (socket.data.rank !== currentTurn) {
+					socket.emit(
+						SOCKET_EVENTS.ERROR,
+						"Cheeky move! You can't buy properties out of turn.",
+					);
+					return;
+				}
 
-			io.to(roomKey).emit(
-				SOCKET_EVENTS.PROPERTY_BOUGHT,
-				result.propertyId,
-				result.userId,
-			);
-		} catch (error) {
-			console.error("Error buying property:", error);
-			socket.emit(SOCKET_EVENTS.ERROR, "Failed to buy property");
-		}
-	});
+				const result = await gameService.buyProperty(roomId, userId, propertyId);
+
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.PROPERTY_BOUGHT,
+					result.propertyId,
+					result.userId,
+				);
+				resetInactivityTimer(io, roomKey);
+			} catch (error) {
+				console.error("Error buying property:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to buy property");
+			}
+		},
+	);
 
 	socket.on(
 		SOCKET_EVENTS.SEND_TRADE_OFFER,
-		(userId, playerId, roomKey, tradeData) => {
+		(userId: string, playerId: string, roomKey: string, tradeData: any) => {
 			io.to(roomKey).emit(
 				SOCKET_EVENTS.RECEIVE_TRADE_OFFER,
 				userId,
 				playerId,
 				tradeData,
 			);
+			resetInactivityTimer(io, roomKey);
 		},
 	);
 
 	socket.on(
 		SOCKET_EVENTS.CONFIRM_TRADE_OFFER,
-		async (fromPlayer, toPlayer, roomKey, tradeData, accepted) => {
+		async (
+			fromPlayer: string,
+			toPlayer: string,
+			roomKey: string,
+			tradeData: any,
+			status: "accepted" | "rejected",
+		) => {
 			try {
 				const roomId = await resolveRoomId(roomKey, socket);
 				if (!roomId) return;
@@ -122,7 +180,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					fromPlayer,
 					toPlayer,
 					tradeData,
-					accepted,
+					status === "accepted",
 				);
 
 				// Emit property transfers
@@ -152,8 +210,9 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					result.toPlayer,
 					roomKey,
 					result.tradeData,
-					result.accepted,
+					status,
 				);
+				resetInactivityTimer(io, roomKey);
 			} catch (error) {
 				console.error("Error confirming trade:", error);
 				socket.emit(SOCKET_EVENTS.ERROR, "Failed to confirm trade");
@@ -163,10 +222,24 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.UPGRADE_PROPERTY,
-		async (propertyId, userId, roomKey, upgradeCost) => {
+		async (
+			propertyId: number,
+			userId: string,
+			roomKey: string,
+			upgradeCost: number,
+		) => {
 			try {
 				const roomId = await resolveRoomId(roomKey, socket);
 				if (!roomId) return;
+
+				const currentTurn = await getCurrentTurn(roomKey);
+				if (socket.data.rank !== currentTurn) {
+					socket.emit(
+						SOCKET_EVENTS.ERROR,
+						"Cheeky move! You can't upgrade properties out of turn.",
+					);
+					return;
+				}
 
 				const result = await gameService.upgradeProperty(
 					roomId,
@@ -187,10 +260,15 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					result.userId,
 					result.newRank,
 				);
+				resetInactivityTimer(io, roomKey);
 			} catch (error) {
 				console.error("Error upgrading property:", error);
 				socket.emit(SOCKET_EVENTS.ERROR, "Failed to upgrade property");
 			}
 		},
 	);
+
+	socket.on(SOCKET_EVENTS.CONFIRM_ACTIVITY, (roomKey: string) => {
+		handleActivityConfirmation(io, roomKey);
+	});
 }

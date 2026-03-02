@@ -25,6 +25,7 @@ import {
 	cancelPendingDisconnect,
 	schedulePendingDisconnect,
 } from "@/lib/storage/disconnect_storage";
+import { clearAllInactivityState } from "@/lib/storage/inactivity_storage";
 import { stopRoomTimer } from "@/lib/storage/timer_storage";
 import * as roomService from "@/service/room.service";
 import type {
@@ -48,7 +49,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 		},
 	});
 
-	io.on("connection", async (socket) => {
+	io.on("connection", async (socket: import("socket.io").Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
 		try {
 			const authUsername = socket.handshake.auth.username as string | undefined;
 			socket.data.name =
@@ -118,10 +119,11 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 						notifyPlayerLeft(io, roomKey, result.userId);
 						if (result.roomEmpty) {
 							stopRoomTimer(roomKey);
+							clearAllInactivityState(roomKey);
 						}
 						await broadcastRoomList(io);
 					});
-				} catch (error) {
+				} catch (error: unknown) {
 					console.error("Error handling disconnect:", error);
 				}
 			});
@@ -129,10 +131,10 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 			// THEN do async work
 			await broadcastRoomList(io);
 
-			socket.on("error", (error) => {
+			socket.on("error", (error: Error) => {
 				console.error("Socket error:", error);
 			});
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error("Connection error:", error);
 			socket.disconnect();
 		}
