@@ -1,5 +1,6 @@
 import { getPlayer, getPlayerCountInRoom } from "@/db/queries/player";
 import { getAllWaitingRooms, getRoomByKey } from "@/db/queries/room";
+import { env } from "@/env";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import type { AppServer, AppSocket } from "@/types/type";
 
@@ -54,7 +55,7 @@ export async function checkRoomCapacity(
 export async function broadcastRoomList(io: AppServer): Promise<void> {
 	// First, try to trigger the Next.js frontend to revalidate its cache
 	try {
-		await fetch("http://localhost:3000/api/revalidate", {
+		await fetch(`${env.frontend_url}/api/revalidate`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ tag: "rooms" }),

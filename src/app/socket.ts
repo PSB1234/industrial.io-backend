@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Server } from "socket.io";
+import { env } from "@/env";
 import {
 	adjectives,
 	animals,
@@ -44,7 +45,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 		SocketData
 	>(httpServer, {
 		cors: {
-			origin: "http://localhost:3000",
+			origin: env.frontend_url,
 			credentials: true,
 		},
 	});
