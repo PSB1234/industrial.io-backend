@@ -45,6 +45,8 @@ export async function createPlayer(
 			})
 			.where(eq(players.id, existing.id));
 
+		await delCache(`room:players:${roomId}`);
+
 		return {
 			id: existing.id,
 			rank: existing.rank,
@@ -87,6 +89,8 @@ export async function createPlayer(
 	if (!player) {
 		throw new Error("Failed to create player");
 	}
+
+	await delCache(`room:players:${roomId}`);
 
 	return player;
 }
