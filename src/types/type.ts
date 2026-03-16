@@ -80,6 +80,7 @@ export interface ClientToServerEvents {
 		username: string,
 		roomKey: string,
 		color: string,
+		password: string | undefined,
 		callback: (username: string, playerList: Player[]) => void,
 	) => void;
 	[SOCKET_EVENTS.SEND_DICE_ROLL]: (diceRoll: number, roomKey: string) => void;
@@ -180,6 +181,7 @@ export interface TradeData {
 export interface RoomData {
 	roomKey: string;
 	name: string;
+	isPrivate: boolean;
 }
 
 // ── Service result types ─────────────────────────────────────────

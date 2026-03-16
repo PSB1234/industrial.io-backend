@@ -28,7 +28,7 @@ export const rooms = pgTable("rooms", {
 	name: varchar({ length: 20 }).notNull(),
 	status: roomStatusEnum().default("waiting").notNull(),
 	type: roomTypeEnum().default("public").notNull(),
-	password: varchar({ length: 20 }),
+	password: text(),
 	currentTurn: integer("current_turn").default(1).notNull(),
 	rankSequence: integer("rank_sequence").default(0).notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -105,4 +105,18 @@ export const kickVotes = pgTable(
 			.notNull(),
 	},
 	(t) => [unique().on(t.roomId, t.targetPlayerId, t.voterId)],
+);
+
+// ── Room Access ─────────────────────────────────────────────────
+
+export const roomAccess = pgTable(
+	"room_access",
+	{
+		id: serial().primaryKey(),
+		roomId: integer("room_id")
+			.references(() => rooms.id, { onDelete: "cascade" })
+			.notNull(),
+		userId: varchar("user_id").notNull(),
+	},
+	(t) => [unique().on(t.roomId, t.userId)],
 );

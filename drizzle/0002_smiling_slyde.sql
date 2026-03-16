@@ -1,0 +1,1 @@
+ALTER TABLE "rooms" ALTER COLUMN "password" SET DATA TYPE text;

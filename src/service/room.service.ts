@@ -1,4 +1,6 @@
 import { clearRoomMessages, getRoomMessages } from "@/db/queries/chat";
+import { hashPassword, verifyPassword } from "@/lib/utils/password";
+import { grantRoomAccess, hasRoomAccess } from "@/db/queries/room_access";
 import {
 	createPlayer,
 	deletePlayer,
@@ -46,11 +48,15 @@ export async function createRoom(
 	color: string,
 ): Promise<CreateRoomResult> {
 	const roomKey = await generateRoomId();
+	const hashedPassword =
+		options.type === "private" && options.password
+			? hashPassword(options.password)
+			: undefined;
 	const roomId = await createDbRoom(
 		roomKey,
 		options.roomName,
 		options.type,
-		options.password,
+		hashedPassword,
 	);
 	const player = await createPlayer(
 		roomId,
@@ -101,10 +107,22 @@ export async function joinRoom(
 	socketId: string,
 	username: string,
 	color: string,
+	password?: string,
 ): Promise<JoinRoomResult> {
 	const room = await getRoomByKey(roomKey);
 	if (!room) {
 		throw new Error("Room not found");
+	}
+
+	if (room.type === "private") {
+		const alreadyVerified = await hasRoomAccess(room.id, userId);
+		if (!alreadyVerified) {
+			if (!password) throw new Error("Password required");
+			if (!room.password || !verifyPassword(password, room.password)) {
+				throw new Error("Incorrect password");
+			}
+			await grantRoomAccess(room.id, userId);
+		}
 	}
 
 	const capacity = await checkRoomCapacity(room.id, userId);
@@ -169,11 +187,12 @@ export async function joinRandomRoom(
 	color: string,
 ): Promise<JoinRoomResult> {
 	const roomList = await getAllWaitingRooms();
-	if (roomList.length === 0) {
+	const publicRooms = roomList.filter((r) => !r.isPrivate);
+	if (publicRooms.length === 0) {
 		throw new Error("No public rooms available");
 	}
 
-	const randomRoomKey = selectRandomRoom(roomList);
+	const randomRoomKey = selectRandomRoom(publicRooms);
 	return joinRoom(randomRoomKey, userId, socketId, username, color);
 }
 

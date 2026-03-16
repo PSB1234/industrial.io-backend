@@ -76,25 +76,33 @@ export async function getAllWaitingRooms(): Promise<
 	{
 		roomKey: string;
 		name: string;
+		isPrivate: boolean;
 	}[]
 > {
 	const cachedRooms = await getCache<
 		{
 			roomKey: string;
 			name: string;
+			isPrivate: boolean;
 		}[]
 	>(WAITING_ROOMS_CACHE_KEY);
 
 	if (cachedRooms) return cachedRooms;
 
 	const waitingRooms = await db
-		.select({ roomKey: rooms.roomKey, name: rooms.name })
+		.select({ roomKey: rooms.roomKey, name: rooms.name, type: rooms.type })
 		.from(rooms)
 		.where(eq(rooms.status, "waiting"))
 		.orderBy(asc(rooms.createdAt));
 
-	await setCache(WAITING_ROOMS_CACHE_KEY, waitingRooms, 30); // Cache waiting rooms for 30s
-	return waitingRooms;
+	const mapped = waitingRooms.map((r) => ({
+		roomKey: r.roomKey,
+		name: r.name,
+		isPrivate: r.type === "private",
+	}));
+
+	await setCache(WAITING_ROOMS_CACHE_KEY, mapped, 30); // Cache waiting rooms for 30s
+	return mapped;
 }
 
 export async function getCurrentTurn(roomKey: string): Promise<number> {

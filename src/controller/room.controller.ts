@@ -122,7 +122,8 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				console.log(`User joined room: ${result.roomKey}`);
 			} catch (error) {
 				console.error("Error joining room:", error);
-				socket.emit(SOCKET_EVENTS.ERROR, "Failed to join room");
+				const msg = error instanceof Error ? error.message : "Failed to join room";
+				socket.emit(SOCKET_EVENTS.ERROR, msg);
 			}
 		},
 	);
@@ -135,6 +136,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 			username: string,
 			roomKey: string,
 			color: string,
+			password: string | undefined,
 			callback: Function,
 		) => {
 			try {
@@ -148,6 +150,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 					socket.data.socketid,
 					socket.data.name,
 					color,
+					password,
 				);
 
 				hydrateSocketData(
@@ -183,7 +186,8 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				}
 			} catch (error) {
 				console.error("Error joining room:", error);
-				socket.emit(SOCKET_EVENTS.ERROR, "Failed to join room");
+				const msg = error instanceof Error ? error.message : "Failed to join room";
+				socket.emit(SOCKET_EVENTS.ERROR, msg);
 			}
 		},
 	);
