@@ -128,6 +128,8 @@ export interface ClientToServerEvents {
 		tradeData: { offer: TradeData; request: TradeData },
 		status: "accepted" | "rejected",
 	) => void;
+	[SOCKET_EVENTS.GO_TO_JAIL]: (userId: string, game_id: string) => void;
+	[SOCKET_EVENTS.COLLECT_TAX]: (userId: string, game_id: string) => void;
 	[SOCKET_EVENTS.LEAVE_ROOM]: (roomKey: string) => void;
 	[SOCKET_EVENTS.SEND_TURN]: (turn: number, roomKey: string) => void;
 	[SOCKET_EVENTS.LEAVE_GAME]: (userId: string, roomKey: string) => void;

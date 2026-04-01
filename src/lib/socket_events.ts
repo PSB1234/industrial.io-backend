@@ -17,6 +17,8 @@ export const SOCKET_EVENTS = {
 	SEND_TRADE_OFFER: "send trade offer",
 	RECEIVE_TRADE_OFFER: "receive trade offer",
 	CONFIRM_TRADE_OFFER: "confirm trade offer",
+	COLLECT_TAX: "collect tax",
+	GO_TO_JAIL: "go to jail",
 	RECEIVE_CONFIRM_TRADE_OFFER: "receive confirm trade offer",
 	SEND_VOTE: "send vote",
 	RECEIVE_VOTE: "receive vote",

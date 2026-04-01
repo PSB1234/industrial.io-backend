@@ -1,5 +1,6 @@
 import {
 	addPlayerMoney,
+	deductPlayerMoney,
 	getPlayerMoney,
 	updatePlayerMoney,
 	updatePlayerPosition,
@@ -59,6 +60,23 @@ export async function updateMoney(
 	const newBalance = currentMoney + amount;
 	await updatePlayerMoney(roomId, userId, newBalance);
 	return { newBalance, userId };
+}
+
+export async function deductMoney(
+	roomId: number,
+	userId: string,
+	amount: number,
+): Promise<MoneyResult> {
+	await deductPlayerMoney(roomId, userId, amount);
+	return { newBalance: await getPlayerMoney(roomId, userId), userId };
+}
+export async function addMoney(
+	roomId: number,
+	userId: string,
+	amount: number,
+): Promise<MoneyResult> {
+	await addPlayerMoney(roomId, userId, amount);
+	return { newBalance: await getPlayerMoney(roomId, userId), userId };
 }
 
 export async function buyProperty(

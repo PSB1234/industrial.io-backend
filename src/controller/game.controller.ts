@@ -5,6 +5,7 @@ import {
 } from "@/helper/inactivity_helpers";
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
+import { collectTaxFromPlayer } from "@/lib/utils/collect_tax";
 import * as gameService from "@/service/game.service";
 import type { AppServer, AppSocket } from "@/types/type";
 
@@ -271,4 +272,30 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 	socket.on(SOCKET_EVENTS.CONFIRM_ACTIVITY, (roomKey: string) => {
 		handleActivityConfirmation(io, roomKey);
 	});
+
+
+	socket.on(SOCKET_EVENTS.COLLECT_TAX, async (userId: string, roomKey: string) => {
+		try {
+			const roomId = await resolveRoomId(roomKey, socket);
+			if (!roomId) return;
+			const amountToBeRemoved = await collectTaxFromPlayer(userId, roomId);
+			const result = await gameService.deductMoney(
+				roomId,
+				userId,
+				amountToBeRemoved,
+			);
+
+			socket.data.money = result.newBalance;
+
+			io.to(roomKey).emit(
+				SOCKET_EVENTS.RECEIVE_MONEY,
+				result.newBalance,
+				userId,
+			);
+			resetInactivityTimer(io, roomKey);
+		} catch (error) {
+			console.error("Error updating money:", error);
+			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update money");
+		}
+	})
 }
