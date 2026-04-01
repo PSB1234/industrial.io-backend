@@ -71,7 +71,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 			socket.data.color = "#000000";
 			socket.data.properties = [];
 			socket.data.leader = false;
-
+			socket.data.skipTurn = false;
 			const userId: string = computeUserId(socket);
 			const hasConnected = handleConnection(userId);
 

@@ -23,7 +23,11 @@ export interface ServerToClientEvents {
 	[SOCKET_EVENTS.GAME_LOOP]: (receivedRoomKey: string, player: Player) => void;
 	[SOCKET_EVENTS.ERROR]: (message: string) => void;
 	[SOCKET_EVENTS.RECEIVE_MESSAGE]: (message: string, username: string) => void;
-	[SOCKET_EVENTS.RECEIVE_POSITION]: (position: number, userid: string) => void;
+	[SOCKET_EVENTS.RECEIVE_POSITION]: (
+		position: number,
+		userid: string,
+		turnCount: number,
+	) => void;
 	[SOCKET_EVENTS.RECEIVE_MONEY]: (money: number, userid: string) => void;
 	[SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS]: () => void;
 	[SOCKET_EVENTS.RECEIVE_TURN]: (turn: number) => void;
@@ -153,6 +157,7 @@ export interface SocketData {
 	color: string;
 	properties: Property[];
 	leader: boolean;
+	skipTurn: boolean;
 }
 export type Player = {
 	id: string;
@@ -165,6 +170,7 @@ export type Player = {
 	votes: number;
 	properties: Property[];
 	leader: boolean;
+	skipTurn: boolean;
 };
 export type Property = {
 	id: number;
@@ -197,6 +203,7 @@ export type CreateRoomResult = {
 		position: number;
 		money: number;
 		leader: boolean;
+		skipTurn: boolean;
 	};
 	players: PlayerSnapshot[];
 	playerSnapshot: Player;
@@ -213,6 +220,7 @@ export type JoinRoomResult = {
 		position: number;
 		money: number;
 		leader: boolean;
+		skipTurn: boolean;
 	};
 	players: PlayerSnapshot[];
 	chatHistory: Array<{ message: string; username: string }>;

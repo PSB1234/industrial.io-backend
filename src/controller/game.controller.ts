@@ -5,6 +5,7 @@ import {
 } from "@/helper/inactivity_helpers";
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
+import { getTurnCount, incrementTurnCount } from "@/lib/storage/turn_storage";
 import { collectTaxFromPlayer } from "@/lib/utils/collect_tax";
 import * as gameService from "@/service/game.service";
 import type { AppServer, AppSocket } from "@/types/type";
@@ -77,11 +78,13 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 			);
 
 			socket.data.position = result.newPosition;
+			const turnCount = incrementTurnCount(roomKey);
 
 			io.to(roomKey).emit(
 				SOCKET_EVENTS.RECEIVE_POSITION,
 				result.newPosition,
 				result.userId,
+				turnCount,
 			);
 			resetInactivityTimer(io, roomKey);
 		} catch (error) {
@@ -298,4 +301,33 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 			socket.emit(SOCKET_EVENTS.ERROR, "Failed to update money");
 		}
 	})
+
+	socket.on(SOCKET_EVENTS.GO_TO_JAIL, async (userId: string, roomKey: string) => {
+		try {
+			const roomId = await resolveRoomId(roomKey, socket);
+			if (!roomId) return;
+
+			const JAIL_TILE_POSITION = 9;
+			const result = await gameService.setPlayerPosition(
+				roomId,
+				userId,
+				JAIL_TILE_POSITION,
+			);
+
+			if (socket.data.userid === userId) {
+				socket.data.position = result.newPosition;
+			}
+
+			io.to(roomKey).emit(
+				SOCKET_EVENTS.RECEIVE_POSITION,
+				result.newPosition,
+				result.userId,
+				getTurnCount(roomKey),
+			);
+			resetInactivityTimer(io, roomKey);
+		} catch (error) {
+			console.error("Error moving player to jail:", error);
+			socket.emit(SOCKET_EVENTS.ERROR, "Failed to move player to jail");
+		}
+	});
 }

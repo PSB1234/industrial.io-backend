@@ -13,6 +13,7 @@ export function hydrateSocketData(
 		position: number;
 		money: number;
 		leader: boolean;
+		skipTurn: boolean;
 	},
 	color: string,
 ): void {
@@ -25,12 +26,15 @@ export function hydrateSocketData(
 	socket.data.color = color;
 	socket.data.leader = player.leader;
 	socket.data.properties = [];
+	socket.data.skipTurn = player.skipTurn;
+
 }
 
 export function resetSocketRoomData(socket: AppSocket): void {
 	socket.data.roomKey = "";
 	socket.data.dbRoomId = 0;
 	socket.data.dbPlayerId = 0;
+
 }
 
 /** Builds the Player object emitted via GAME_LOOP from current socket state. */
@@ -54,5 +58,6 @@ export async function buildPlayerSnapshot(
 		votes,
 		properties,
 		leader: socket.data.leader,
+		skipTurn: socket.data.skipTurn,
 	};
 }

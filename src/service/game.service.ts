@@ -51,6 +51,15 @@ export async function updatePosition(
 	return { newPosition, userId };
 }
 
+export async function setPlayerPosition(
+	roomId: number,
+	userId: string,
+	newPosition: number,
+): Promise<PositionResult> {
+	await updatePlayerPosition(roomId, userId, newPosition);
+	return { newPosition, userId };
+}
+
 export async function updateMoney(
 	roomId: number,
 	userId: string,
