@@ -89,6 +89,7 @@ export async function createRoom(
 		properties: playerProperties,
 		leader: player.leader,
 		behindBars: player.behindBars,
+		skipTurn: false,
 	};
 
 	return {
@@ -168,6 +169,7 @@ export async function joinRoom(
 		properties: playerProperties,
 		leader: player.leader,
 		behindBars: player.behindBars,
+		skipTurn: false,
 	};
 
 	return {

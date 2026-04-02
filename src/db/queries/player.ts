@@ -33,6 +33,7 @@ export async function createPlayer(
 	money: number;
 	leader: boolean;
 	behindBars: boolean;
+	skipTurn: boolean;
 }> {
 	const existing = await getPlayer(roomId, userId);
 	if (existing) {
@@ -55,6 +56,7 @@ export async function createPlayer(
 			money: existing.money,
 			leader: existing.leader || isLeader,
 			behindBars: existing.behindBars,
+			skipTurn: existing.skipTurn,
 		};
 	}
 
@@ -87,6 +89,7 @@ export async function createPlayer(
 			money: players.money,
 			leader: players.isLeader,
 			behindBars: players.behindBars,
+			skipTurn: players.skipTurn,
 		});
 
 	if (!player) {
@@ -112,6 +115,7 @@ export async function getPlayer(
 	color: string;
 	leader: boolean;
 	behindBars: boolean;
+	skipTurn: boolean;
 } | null> {
 	const [player] = await db
 		.select({
@@ -125,6 +129,7 @@ export async function getPlayer(
 			color: players.color,
 			leader: players.isLeader,
 			behindBars: players.behindBars,
+			skipTurn: players.skipTurn,
 		})
 		.from(players)
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)))
@@ -153,6 +158,7 @@ export async function getPlayersInRoom(
 				color: players.color,
 				leader: players.isLeader,
 				behindBars: players.behindBars,
+				skipTurn: players.skipTurn,
 			})
 			.from(players)
 			.where(eq(players.roomId, roomId))
@@ -197,6 +203,7 @@ export async function getPlayersInRoom(
 		color: player.color,
 		leader: player.leader,
 		behindBars: player.behindBars,
+		skipTurn: player.skipTurn,
 		properties: propertiesByPlayer.get(player.dbId) ?? [],
 		votes: votesByPlayer.get(player.dbId) ?? 0,
 	}));
