@@ -7,6 +7,11 @@ import {
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
+	clearLastDiceRoll,
+	getLastDiceRoll,
+	setLastDiceRoll,
+} from "@/lib/storage/dice_storage";
+import {
 	clearJailRollAttemptsForPlayer,
 	incrementJailRollAttempts,
 } from "@/lib/storage/jail_storage";
@@ -29,12 +34,21 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					return;
 				}
 
+				const lastDice = getLastDiceRoll(roomKey, socket.data.userid);
+				if (lastDice === 6) {
+					clearLastDiceRoll(roomKey, socket.data.userid);
+					io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, authoritativeTurn);
+					resetInactivityTimer(io, roomKey);
+					return;
+				}
+
 				const result = await gameService.advanceTurn(
 					roomKey,
 					roomId,
 					authoritativeTurn,
 				);
 				if (!result) return;
+				clearLastDiceRoll(roomKey, socket.data.userid);
 
 				io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, result.nextTurn);
 				resetInactivityTimer(io, roomKey);
@@ -56,6 +70,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				);
 				return;
 			}
+			setLastDiceRoll(roomKey, socket.data.userid, diceRoll);
 			io.to(roomKey).emit(SOCKET_EVENTS.GET_DICE_ROLL, diceRoll);
 			resetInactivityTimer(io, roomKey);
 		},
@@ -74,6 +89,8 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				);
 				return;
 			}
+
+			setLastDiceRoll(roomKey, socket.data.userid, dice);
 
 			const player = await getPlayer(roomId, socket.data.userid);
 			if (!player) {
