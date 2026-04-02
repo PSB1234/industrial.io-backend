@@ -52,6 +52,7 @@ export const players = pgTable(
 		color: varchar({ length: 10 }).notNull(),
 		isLeader: boolean("is_leader").default(false).notNull(),
 		joinedAt: timestamp("joined_at").defaultNow().notNull(),
+		behindBars: boolean("behind_bars").default(false).notNull(),
 	},
 	(t) => [unique().on(t.roomId, t.userId)],
 );

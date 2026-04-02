@@ -72,6 +72,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 			socket.data.properties = [];
 			socket.data.leader = false;
 			socket.data.skipTurn = false;
+			socket.data.behindBars = false;
 			const userId: string = computeUserId(socket);
 			const hasConnected = handleConnection(userId);
 

@@ -1,10 +1,15 @@
 import { getCurrentTurn } from "@/db/queries/room";
+import { getPlayer } from "@/db/queries/player";
 import {
 	handleActivityConfirmation,
 	resetInactivityTimer,
 } from "@/helper/inactivity_helpers";
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
+import {
+	clearJailRollAttemptsForPlayer,
+	incrementJailRollAttempts,
+} from "@/lib/storage/jail_storage";
 import { getTurnCount, incrementTurnCount } from "@/lib/storage/turn_storage";
 import { collectTaxFromPlayer } from "@/lib/utils/collect_tax";
 import * as gameService from "@/service/game.service";
@@ -70,12 +75,56 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				return;
 			}
 
-			const result = await gameService.updatePosition(
-				roomId,
-				socket.data.userid,
-				socket.data.position,
-				dice,
-			);
+			const player = await getPlayer(roomId, socket.data.userid);
+			if (!player) {
+				socket.emit(SOCKET_EVENTS.ERROR, "Player not found");
+				return;
+			}
+
+			let result;
+			if (player.behindBars) {
+				if (dice === 6) {
+					await gameService.setPlayerFreeFromJail(roomId, socket.data.userid);
+					clearJailRollAttemptsForPlayer(roomKey, socket.data.userid);
+					socket.data.behindBars = false;
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.JAIL_STATUS_CHANGED,
+						socket.data.userid,
+						false,
+					);
+					result = await gameService.updatePosition(
+						roomId,
+						socket.data.userid,
+						socket.data.position,
+						dice,
+					);
+				} else {
+					const attempts = incrementJailRollAttempts(roomKey, socket.data.userid);
+
+					if (attempts >= 3) {
+						await gameService.setPlayerFreeFromJail(roomId, socket.data.userid);
+						clearJailRollAttemptsForPlayer(roomKey, socket.data.userid);
+						socket.data.behindBars = false;
+						io.to(roomKey).emit(
+							SOCKET_EVENTS.JAIL_STATUS_CHANGED,
+							socket.data.userid,
+							false,
+						);
+					}
+
+					result = {
+						newPosition: socket.data.position,
+						userId: socket.data.userid,
+					};
+				}
+			} else {
+				result = await gameService.updatePosition(
+					roomId,
+					socket.data.userid,
+					socket.data.position,
+					dice,
+				);
+			}
 
 			socket.data.position = result.newPosition;
 			const turnCount = incrementTurnCount(roomKey);
@@ -307,23 +356,25 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 			const roomId = await resolveRoomId(roomKey, socket);
 			if (!roomId) return;
 
-			const JAIL_TILE_POSITION = 9;
-			const result = await gameService.setPlayerPosition(
+			const JAIL_TILE_POSITION = 8;
+			const result = await gameService.setPlayerToJail(
 				roomId,
 				userId,
-				JAIL_TILE_POSITION,
 			);
+			clearJailRollAttemptsForPlayer(roomKey, userId);
 
 			if (socket.data.userid === userId) {
-				socket.data.position = result.newPosition;
+				socket.data.position = JAIL_TILE_POSITION;
+				socket.data.behindBars = true;
 			}
 
 			io.to(roomKey).emit(
 				SOCKET_EVENTS.RECEIVE_POSITION,
-				result.newPosition,
+				JAIL_TILE_POSITION,
 				result.userId,
 				getTurnCount(roomKey),
 			);
+			io.to(roomKey).emit(SOCKET_EVENTS.JAIL_STATUS_CHANGED, result.userId, true);
 			resetInactivityTimer(io, roomKey);
 		} catch (error) {
 			console.error("Error moving player to jail:", error);

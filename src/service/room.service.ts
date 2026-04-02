@@ -88,6 +88,7 @@ export async function createRoom(
 		votes: playerVotes,
 		properties: playerProperties,
 		leader: player.leader,
+		behindBars: player.behindBars,
 	};
 
 	return {
@@ -166,6 +167,7 @@ export async function joinRoom(
 		votes: playerVotes,
 		properties: playerProperties,
 		leader: player.leader,
+		behindBars: player.behindBars,
 	};
 
 	return {

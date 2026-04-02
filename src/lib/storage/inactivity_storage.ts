@@ -2,8 +2,8 @@ const inactivityTimers = new Map<string, NodeJS.Timeout>();
 const warningTimers = new Map<string, NodeJS.Timeout>();
 const warningTickIntervals = new Map<string, NodeJS.Timeout>();
 
-export const INACTIVITY_DELAY_MS = 60000; // 60 seconds before warning
-export const WARNING_COUNTDOWN_MS = 60000; // 60 seconds to confirm
+export const INACTIVITY_DELAY_MS = 10 * 60 * 1000; // 10 minutes  before warning
+export const WARNING_COUNTDOWN_MS = 60 * 1000; // 60 seconds to confirm
 
 export const setInactivityTimer = (
 	roomKey: string,

@@ -32,6 +32,7 @@ export async function createPlayer(
 	position: number;
 	money: number;
 	leader: boolean;
+	behindBars: boolean;
 }> {
 	const existing = await getPlayer(roomId, userId);
 	if (existing) {
@@ -53,6 +54,7 @@ export async function createPlayer(
 			position: existing.position,
 			money: existing.money,
 			leader: existing.leader || isLeader,
+			behindBars: existing.behindBars,
 		};
 	}
 
@@ -84,6 +86,7 @@ export async function createPlayer(
 			position: players.position,
 			money: players.money,
 			leader: players.isLeader,
+			behindBars: players.behindBars,
 		});
 
 	if (!player) {
@@ -108,6 +111,7 @@ export async function getPlayer(
 	money: number;
 	color: string;
 	leader: boolean;
+	behindBars: boolean;
 } | null> {
 	const [player] = await db
 		.select({
@@ -120,6 +124,7 @@ export async function getPlayer(
 			money: players.money,
 			color: players.color,
 			leader: players.isLeader,
+			behindBars: players.behindBars,
 		})
 		.from(players)
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)))
@@ -147,6 +152,7 @@ export async function getPlayersInRoom(
 				money: players.money,
 				color: players.color,
 				leader: players.isLeader,
+				behindBars: players.behindBars,
 			})
 			.from(players)
 			.where(eq(players.roomId, roomId))
@@ -190,6 +196,7 @@ export async function getPlayersInRoom(
 		money: player.money,
 		color: player.color,
 		leader: player.leader,
+		behindBars: player.behindBars,
 		properties: propertiesByPlayer.get(player.dbId) ?? [],
 		votes: votesByPlayer.get(player.dbId) ?? 0,
 	}));
@@ -267,7 +274,26 @@ export async function updatePlayerPosition(
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
 	await delCache(`room:players:${roomId}`);
 }
-
+export async function jailPlayer(
+	roomId: number,
+	userId: string,
+): Promise<void> {
+	await db
+		.update(players)
+		.set({ behindBars: true })
+		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
+	await delCache(`room:players:${roomId}`);
+}
+export async function freeJailedPlayer(
+	roomId: number,
+	userId: string,
+): Promise<void> {
+	await db
+		.update(players)
+		.set({ behindBars: false })
+		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
+	await delCache(`room:players:${roomId}`);
+}
 export async function deletePlayer(
 	roomId: number,
 	userId: string,

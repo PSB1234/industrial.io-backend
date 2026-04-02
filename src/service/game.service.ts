@@ -1,7 +1,9 @@
 import {
 	addPlayerMoney,
 	deductPlayerMoney,
+	freeJailedPlayer,
 	getPlayerMoney,
+	jailPlayer,
 	updatePlayerMoney,
 	updatePlayerPosition,
 } from "@/db/queries/player";
@@ -59,7 +61,24 @@ export async function setPlayerPosition(
 	await updatePlayerPosition(roomId, userId, newPosition);
 	return { newPosition, userId };
 }
-
+export async function setPlayerToJail(
+	roomId: number,
+	userId: string
+): Promise<{ userId: string }> {
+	const JAIL_TILE_POSITION = 8;
+	await Promise.all([
+		jailPlayer(roomId, userId),
+		updatePlayerPosition(roomId, userId, JAIL_TILE_POSITION),
+	]);
+	return { userId };
+}
+export async function setPlayerFreeFromJail(
+	roomId: number,
+	userId: string
+): Promise<{ userId: string }> {
+	await freeJailedPlayer(roomId, userId);
+	return { userId };
+}
 export async function updateMoney(
 	roomId: number,
 	userId: string,

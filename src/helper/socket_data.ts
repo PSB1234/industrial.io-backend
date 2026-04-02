@@ -14,6 +14,7 @@ export function hydrateSocketData(
 		money: number;
 		leader: boolean;
 		skipTurn: boolean;
+		behindBars?: boolean;
 	},
 	color: string,
 ): void {
@@ -27,6 +28,7 @@ export function hydrateSocketData(
 	socket.data.leader = player.leader;
 	socket.data.properties = [];
 	socket.data.skipTurn = player.skipTurn;
+	socket.data.behindBars = player.behindBars ?? false;
 
 }
 
@@ -34,6 +36,7 @@ export function resetSocketRoomData(socket: AppSocket): void {
 	socket.data.roomKey = "";
 	socket.data.dbRoomId = 0;
 	socket.data.dbPlayerId = 0;
+	socket.data.behindBars = false;
 
 }
 
@@ -59,5 +62,6 @@ export async function buildPlayerSnapshot(
 		properties,
 		leader: socket.data.leader,
 		skipTurn: socket.data.skipTurn,
+		behindBars: socket.data.behindBars,
 	};
 }

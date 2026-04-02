@@ -13,6 +13,7 @@ export type PlayerSnapshot = {
 	votes: number;
 	properties: { id: number; rank: number }[];
 	leader: boolean;
+	behindBars: boolean;
 };
 export interface ServerToClientEvents {
 	[SOCKET_EVENTS.USER_CONNECTED]: (username: string) => void;
@@ -27,6 +28,10 @@ export interface ServerToClientEvents {
 		position: number,
 		userid: string,
 		turnCount: number,
+	) => void;
+	[SOCKET_EVENTS.JAIL_STATUS_CHANGED]: (
+		userId: string,
+		behindBars: boolean,
 	) => void;
 	[SOCKET_EVENTS.RECEIVE_MONEY]: (money: number, userid: string) => void;
 	[SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS]: () => void;
@@ -158,6 +163,7 @@ export interface SocketData {
 	properties: Property[];
 	leader: boolean;
 	skipTurn: boolean;
+	behindBars: boolean;
 }
 export type Player = {
 	id: string;
@@ -171,6 +177,7 @@ export type Player = {
 	properties: Property[];
 	leader: boolean;
 	skipTurn: boolean;
+	behindBars: boolean;
 };
 export type Property = {
 	id: number;

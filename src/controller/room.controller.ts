@@ -266,6 +266,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 							s.data.color = "#000000";
 							s.data.properties = [];
 							s.data.leader = false;
+							s.data.behindBars = false;
 						}
 					}
 
