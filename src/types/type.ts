@@ -14,6 +14,7 @@ export type PlayerSnapshot = {
 	properties: { id: number; rank: number }[];
 	leader: boolean;
 	behindBars: boolean;
+	skipTurn: boolean;
 };
 export interface ServerToClientEvents {
 	[SOCKET_EVENTS.USER_CONNECTED]: (username: string) => void;
@@ -70,6 +71,11 @@ export interface ServerToClientEvents {
 	[SOCKET_EVENTS.INACTIVITY_WARNING]: (countdown: number) => void;
 	[SOCKET_EVENTS.INACTIVITY_TICK]: (remainingSeconds: number) => void;
 	[SOCKET_EVENTS.INACTIVITY_RESET]: () => void;
+	[SOCKET_EVENTS.RESOLVE_CHEST]: (
+		roomKey: string,
+		reason: ChestResolutionReason,
+		ack: (result: ChestResolutionResult) => void,
+	) => void;
 	connect: () => void;
 	disconnect: (reason: string) => void;
 	reconnect: () => void;
@@ -144,6 +150,11 @@ export interface ClientToServerEvents {
 	[SOCKET_EVENTS.LEAVE_GAME]: (userId: string, roomKey: string) => void;
 	[SOCKET_EVENTS.REMOVE_PLAYER]: (roomKey: string) => void;
 	[SOCKET_EVENTS.CONFIRM_ACTIVITY]: (roomKey: string) => void;
+	[SOCKET_EVENTS.RESOLVE_CHEST]: (
+		roomKey: string,
+		reason: ChestResolutionReason,
+		ack: (result: ChestResolutionResult) => void,
+	) => void;
 }
 export interface InterServerEvents {
 	ping: () => void;
@@ -198,6 +209,36 @@ export interface RoomData {
 	name: string;
 	isPrivate: boolean;
 }
+
+export type ChestResolutionReason = "stopped" | "timeout";
+
+export type ChestEventId =
+	| "unexpected-inheritance"
+	| "startup-success-bonus"
+	| "tax-refund"
+	| "property-upgrade-grant"
+	| "lucky-investment"
+	| "medical-emergency"
+	| "property-damage"
+	| "fraud-scandal"
+	| "market-crash"
+	| "investigation-jail";
+
+export type ChestResolutionResult = {
+	eventId: ChestEventId;
+	title: string;
+	description: string;
+	rewardText: string;
+	reason: ChestResolutionReason;
+	moneyDelta?: number;
+	newBalance?: number;
+	propertyId?: number;
+	newRank?: number;
+	position?: number;
+	behindBars?: boolean;
+	skipTurn?: boolean;
+	usedFallback?: boolean;
+};
 
 // ── Service result types ─────────────────────────────────────────
 

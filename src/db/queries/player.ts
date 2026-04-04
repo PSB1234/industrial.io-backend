@@ -301,6 +301,19 @@ export async function freeJailedPlayer(
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
 	await delCache(`room:players:${roomId}`);
 }
+
+export async function setPlayerSkipTurn(
+	roomId: number,
+	userId: string,
+	skipTurn: boolean,
+): Promise<void> {
+	await db
+		.update(players)
+		.set({ skipTurn })
+		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
+	await delCache(`room:players:${roomId}`);
+}
+
 export async function deletePlayer(
 	roomId: number,
 	userId: string,

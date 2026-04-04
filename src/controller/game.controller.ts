@@ -18,9 +18,84 @@ import {
 import { getTurnCount, incrementTurnCount } from "@/lib/storage/turn_storage";
 import { collectTaxFromPlayer } from "@/lib/utils/collect_tax";
 import * as gameService from "@/service/game.service";
-import type { AppServer, AppSocket } from "@/types/type";
+import type { AppServer, AppSocket, ChestResolutionResult } from "@/types/type";
 
 export function registerGameController(io: AppServer, socket: AppSocket) {
+	socket.on(
+		SOCKET_EVENTS.RESOLVE_CHEST,
+		async (
+			roomKey: string,
+			reason: "stopped" | "timeout",
+			ack: (result: ChestResolutionResult) => void,
+		) => {
+			try {
+				const roomId = await resolveRoomId(roomKey, socket);
+				if (!roomId) return;
+
+				const currentTurn = await getCurrentTurn(roomKey);
+				if (socket.data.rank !== currentTurn) {
+					socket.emit(
+						SOCKET_EVENTS.ERROR,
+						"Cheeky move! You can't resolve chest out of turn.",
+					);
+					return;
+				}
+
+				const result = await gameService.resolveChestEvent(
+					roomId,
+					socket.data.userid,
+					reason,
+				);
+
+				if (typeof result.newBalance === "number") {
+					socket.data.money = result.newBalance;
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.RECEIVE_MONEY,
+						result.newBalance,
+						socket.data.userid,
+					);
+				}
+
+				if (
+					typeof result.propertyId === "number" &&
+					typeof result.newRank === "number"
+				) {
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.PROPERTY_UPGRADED,
+						result.propertyId,
+						socket.data.userid,
+						result.newRank,
+					);
+				}
+
+				if (result.position === 8 || result.behindBars) {
+					socket.data.position = 8;
+					socket.data.behindBars = true;
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.RECEIVE_POSITION,
+						8,
+						socket.data.userid,
+						getTurnCount(roomKey),
+					);
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.JAIL_STATUS_CHANGED,
+						socket.data.userid,
+						true,
+					);
+				}
+
+				if (result.skipTurn) {
+					socket.data.skipTurn = true;
+				}
+
+				resetInactivityTimer(io, roomKey);
+				ack(result);
+			} catch (error) {
+				console.error("Error resolving chest:", error);
+				socket.emit(SOCKET_EVENTS.ERROR, "Failed to resolve chest");
+			}
+		},
+	);
 	socket.on(
 		SOCKET_EVENTS.SEND_TURN,
 		async (_currentTurn: number, roomKey: string) => {
@@ -112,7 +187,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					result = await gameService.updatePosition(
 						roomId,
 						socket.data.userid,
-						socket.data.position,
+						player.position,
 						dice,
 					);
 				} else {
@@ -130,7 +205,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					}
 
 					result = {
-						newPosition: socket.data.position,
+						newPosition: player.position,
 						userId: socket.data.userid,
 					};
 				}
@@ -138,7 +213,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				result = await gameService.updatePosition(
 					roomId,
 					socket.data.userid,
-					socket.data.position,
+					player.position,
 					dice,
 				);
 			}

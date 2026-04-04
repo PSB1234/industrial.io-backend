@@ -6,6 +6,7 @@ export const SOCKET_EVENTS = {
 	RECEIVE_MESSAGE: "receive message",
 	SEND_POSITION: "send position",
 	RECEIVE_POSITION: "receive position",
+	RESOLVE_CHEST: "resolve chest",
 	CHANGE_ROOM_STATUS: "change room status",
 	AFTER_CHANGE_ROOM_STATUS: "after change room status",
 	SEND_MONEY: "send money",
