@@ -7,4 +7,6 @@ if (!env.DATABASE_URL) {
 }
 
 const client = env.DATABASE_URL ? postgres(env.DATABASE_URL) : null;
-export const db = client ? drizzle(client) : (null as unknown as ReturnType<typeof drizzle>);
+export const db = client
+	? drizzle(client)
+	: (null as unknown as ReturnType<typeof drizzle>);

@@ -35,6 +35,7 @@ export interface ServerToClientEvents {
 		behindBars: boolean,
 	) => void;
 	[SOCKET_EVENTS.RECEIVE_MONEY]: (money: number, userid: string) => void;
+	[SOCKET_EVENTS.RECEIVE_MONEY_UPDATE]: (payload: MoneyUpdatePayload) => void;
 	[SOCKET_EVENTS.AFTER_CHANGE_ROOM_STATUS]: () => void;
 	[SOCKET_EVENTS.RECEIVE_TURN]: (turn: number) => void;
 	[SOCKET_EVENTS.PROPERTY_BOUGHT]: (propertyId: number, userid: string) => void;
@@ -105,6 +106,8 @@ export interface ClientToServerEvents {
 		amount: number,
 		userid: string,
 		roomKey: string,
+		source?: MoneyUpdateSource,
+		targetUserId?: string,
 	) => void;
 	[SOCKET_EVENTS.JOIN_RANDOM_ROOM]: (
 		color: string,
@@ -212,6 +215,16 @@ export interface RoomData {
 
 export type ChestResolutionReason = "stopped" | "timeout";
 
+export type MoneyUpdateSource =
+	| "buy-property"
+	| "pay-rent"
+	| "tax"
+	| "chest"
+	| "upgrade"
+	| "trade"
+	| "pass-start"
+	| "manual";
+
 export type ChestEventId =
 	| "unexpected-inheritance"
 	| "startup-success-bonus"
@@ -238,6 +251,16 @@ export type ChestResolutionResult = {
 	behindBars?: boolean;
 	skipTurn?: boolean;
 	usedFallback?: boolean;
+};
+
+export type MoneyUpdatePayload = {
+	userId: string;
+	newBalance: number;
+	delta: number;
+	source: MoneyUpdateSource;
+	targetUserId?: string;
+	eventId?: ChestEventId;
+	eventTitle?: string;
 };
 
 // ── Service result types ─────────────────────────────────────────

@@ -257,6 +257,23 @@ export async function deductPlayerMoney(
 	await delCache(`room:players:${roomId}`);
 }
 
+export async function resetPlayersForNewGame(
+	roomId: number,
+	startingMoney: number,
+): Promise<void> {
+	await db
+		.update(players)
+		.set({
+			money: startingMoney,
+			position: 0,
+			behindBars: false,
+			skipTurn: false,
+		})
+		.where(eq(players.roomId, roomId));
+
+	await delCache(`room:players:${roomId}`);
+}
+
 export async function getPlayerMoney(
 	roomId: number,
 	userId: string,

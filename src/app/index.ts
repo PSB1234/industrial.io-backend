@@ -3,8 +3,8 @@ import cors from "cors";
 import express, { type Express, type Request, type Response } from "express";
 import { initializeSocket } from "@/app/socket";
 import { getAllWaitingRooms } from "@/db/queries/room";
-import { env } from "@/env";
 import { connectRedis } from "@/db/redis";
+import { env } from "@/env";
 
 //create express app
 const app: Express = express();

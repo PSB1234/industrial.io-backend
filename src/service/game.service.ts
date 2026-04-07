@@ -12,8 +12,8 @@ import {
 } from "@/db/queries/player";
 import {
 	assignProperty,
-	getPropertyRank,
 	getPlayerPropertiesWithRanks,
+	getPropertyRank,
 	removeProperty,
 } from "@/db/queries/property";
 import { setCurrentTurn } from "@/db/queries/room";
@@ -85,7 +85,7 @@ export async function setPlayerPosition(
 }
 export async function setPlayerToJail(
 	roomId: number,
-	userId: string
+	userId: string,
 ): Promise<{ userId: string }> {
 	const JAIL_TILE_POSITION = 8;
 	await Promise.all([
@@ -96,7 +96,7 @@ export async function setPlayerToJail(
 }
 export async function setPlayerFreeFromJail(
 	roomId: number,
-	userId: string
+	userId: string,
 ): Promise<{ userId: string }> {
 	await freeJailedPlayer(roomId, userId);
 	return { userId };
@@ -237,7 +237,10 @@ export async function resolveChestEvent(
 			};
 		}
 		case "property-upgrade-grant": {
-			const ownedProperties = await getPlayerPropertiesWithRanks(roomId, userId);
+			const ownedProperties = await getPlayerPropertiesWithRanks(
+				roomId,
+				userId,
+			);
 			const target = [...ownedProperties].sort((a, b) => a.id - b.id)[0];
 
 			if (!target) {
@@ -269,7 +272,8 @@ export async function resolveChestEvent(
 			return {
 				eventId,
 				title: "Property Upgrade Grant",
-				description: "Government funds your development — upgrade one property for free.",
+				description:
+					"Government funds your development — upgrade one property for free.",
 				rewardText: `Free upgrade on property ${target.id}`,
 				reason,
 				propertyId: target.id,
@@ -341,7 +345,10 @@ export async function resolveChestEvent(
 		}
 		case "market-crash": {
 			const amount = Math.floor(player.money * 0.25);
-			const result = amount > 0 ? await applyMoneyDelta(roomId, userId, -amount) : { newBalance: player.money };
+			const result =
+				amount > 0
+					? await applyMoneyDelta(roomId, userId, -amount)
+					: { newBalance: player.money };
 			return {
 				eventId,
 				title: "Market Crash",

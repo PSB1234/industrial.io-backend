@@ -29,7 +29,6 @@ export function hydrateSocketData(
 	socket.data.properties = [];
 	socket.data.skipTurn = player.skipTurn;
 	socket.data.behindBars = player.behindBars ?? false;
-
 }
 
 export function resetSocketRoomData(socket: AppSocket): void {
@@ -37,7 +36,6 @@ export function resetSocketRoomData(socket: AppSocket): void {
 	socket.data.dbRoomId = 0;
 	socket.data.dbPlayerId = 0;
 	socket.data.behindBars = false;
-
 }
 
 /** Builds the Player object emitted via GAME_LOOP from current socket state. */

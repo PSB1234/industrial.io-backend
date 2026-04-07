@@ -9,7 +9,10 @@ const getRoomAttempts = (roomKey: string): Map<string, number> => {
 	return next;
 };
 
-export const getJailRollAttempts = (roomKey: string, userId: string): number => {
+export const getJailRollAttempts = (
+	roomKey: string,
+	userId: string,
+): number => {
 	return getRoomAttempts(roomKey).get(userId) ?? 0;
 };
 

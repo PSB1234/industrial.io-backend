@@ -1,1 +1,2 @@
 export const DEFAULT_STARTING_MONEY = 2500;
+export const DEFAULT_PASS_START_REWARD = 500;

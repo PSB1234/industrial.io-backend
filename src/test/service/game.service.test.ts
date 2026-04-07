@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { getPlayerMoney } from "@/db/queries/player";
 import { transferMoney, transferProperties } from "@/helper/trade";
 import { confirmTrade } from "@/service/game.service";
@@ -26,13 +26,7 @@ describe("game.service.confirmTrade", () => {
 			.mockResolvedValueOnce(900)
 			.mockResolvedValueOnce(1100);
 
-		const result = await confirmTrade(
-			1,
-			"user1",
-			"user2",
-			tradeData,
-			true,
-		);
+		const result = await confirmTrade(1, "user1", "user2", tradeData, true);
 
 		expect(result.accepted).toBe(true);
 		expect(result.fromBalance).toBe(900);
@@ -46,13 +40,7 @@ describe("game.service.confirmTrade", () => {
 			.mockResolvedValueOnce(1000)
 			.mockResolvedValueOnce(1000);
 
-		const result = await confirmTrade(
-			1,
-			"user1",
-			"user2",
-			tradeData,
-			false,
-		);
+		const result = await confirmTrade(1, "user1", "user2", tradeData, false);
 
 		expect(result.accepted).toBe(false);
 		expect(transferProperties).not.toHaveBeenCalled();

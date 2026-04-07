@@ -18,8 +18,5 @@ export async function grantRoomAccess(
 	roomId: number,
 	userId: string,
 ): Promise<void> {
-	await db
-		.insert(roomAccess)
-		.values({ roomId, userId })
-		.onConflictDoNothing();
+	await db.insert(roomAccess).values({ roomId, userId }).onConflictDoNothing();
 }

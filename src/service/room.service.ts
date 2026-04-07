@@ -1,11 +1,10 @@
 import { clearRoomMessages, getRoomMessages } from "@/db/queries/chat";
-import { hashPassword, verifyPassword } from "@/lib/utils/password";
-import { grantRoomAccess, hasRoomAccess } from "@/db/queries/room_access";
 import {
 	createPlayer,
 	deletePlayer,
 	getPlayerCountInRoom,
 	getPlayersInRoom,
+	resetPlayersForNewGame,
 } from "@/db/queries/player";
 import { getPlayerPropertiesWithRanks } from "@/db/queries/property";
 import {
@@ -16,9 +15,12 @@ import {
 	getRoomStatus,
 	setRoomStatus,
 } from "@/db/queries/room";
+import { grantRoomAccess, hasRoomAccess } from "@/db/queries/room_access";
 import { addVote, getVotedPlayers, getVotes } from "@/db/queries/votes";
 import { generateRoomId } from "@/helper";
+import { DEFAULT_STARTING_MONEY } from "@/helper/default_value";
 import { checkRoomCapacity } from "@/helper/room_utils";
+import { hashPassword, verifyPassword } from "@/lib/utils/password";
 import { deleteRoom } from "@/lib/utils/room_cleanup";
 import type {
 	ChangeStatusResult,
@@ -207,6 +209,15 @@ export async function changeRoomStatus(
 	const oldStatus = await getRoomStatus(roomKey);
 	if (!oldStatus) {
 		throw new Error("Room not found");
+	}
+
+	if (oldStatus === "waiting" && newStatus === "playing") {
+		const room = await getRoomByKey(roomKey);
+		if (!room) {
+			throw new Error("Room not found");
+		}
+
+		await resetPlayersForNewGame(room.id, DEFAULT_STARTING_MONEY);
 	}
 
 	await setRoomStatus(roomKey, newStatus);

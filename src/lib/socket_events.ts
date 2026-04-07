@@ -11,6 +11,7 @@ export const SOCKET_EVENTS = {
 	AFTER_CHANGE_ROOM_STATUS: "after change room status",
 	SEND_MONEY: "send money",
 	RECEIVE_MONEY: "receive money",
+	RECEIVE_MONEY_UPDATE: "receive money update",
 	BUY_PROPERTY: "buy property",
 	PROPERTY_BOUGHT: "property bought",
 	UPGRADE_PROPERTY: "upgrade property",
