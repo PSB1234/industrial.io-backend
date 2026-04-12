@@ -96,10 +96,10 @@ beforeEach(() => {
 describe("selectRandomRoom", () => {
 	it("returns a key from the list", () => {
 		const rooms = [
-			{ roomKey: "111111", name: "Room A" },
-			{ roomKey: "222222", name: "Room B" },
+			{ roomKey: "111111", name: "Room A", isPrivate: false },
+			{ roomKey: "222222", name: "Room B", isPrivate: false },
 		];
-		const result = selectRandomRoom(rooms);
+		const result = selectRandomRoom(rooms as any[]);
 		expect(["111111", "222222"]).toContain(result);
 	});
 
