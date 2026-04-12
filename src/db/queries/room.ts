@@ -1,9 +1,9 @@
 // ── Room Queries ──────────────────────────────────────────────────
 
 import { asc, eq } from "drizzle-orm";
-import { db } from "..";
-import { delCache, getCache, setCache } from "../redis";
-import { rooms } from "../schema";
+import { db } from "@/db/index";
+import { delCache, getCache, setCache } from "@/db/redis";
+import { rooms } from "@/db/schema";
 
 //cache for rooms list
 const WAITING_ROOMS_CACHE_KEY = "rooms:waiting:all";

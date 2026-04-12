@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "..";
-import { roomAccess } from "../schema";
+import { db } from "@/db/index";
+import { roomAccess } from "@/db/schema";
 
 export async function hasRoomAccess(
 	roomId: number,

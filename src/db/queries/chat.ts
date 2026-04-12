@@ -1,8 +1,8 @@
 // ── Chat Queries ──────────────────────────────────────────────────
 
 import { asc, eq } from "drizzle-orm";
-import { db } from "..";
-import { chatMessages, players } from "../schema";
+import { db } from "@/db/index";
+import { chatMessages, players } from "@/db/schema";
 
 export async function addChatMessage(
 	roomId: number,

@@ -22,17 +22,26 @@ import * as gameService from "@/service/game.service";
 import type {
 	AppServer,
 	AppSocket,
-	ChestSpinOutcome,
 	ChestResolutionResult,
+	ChestSpinOutcome,
 	MoneyUpdatePayload,
 	MoneyUpdateSource,
 	PositionResult,
 	TradeData,
 } from "@/types/type";
 
-const VALID_CHEST_SYMBOLS = new Set(["COIN", "STAR", "GEM", "BOLT", "LUCK", "x2"]);
+const VALID_CHEST_SYMBOLS = new Set([
+	"COIN",
+	"STAR",
+	"GEM",
+	"BOLT",
+	"LUCK",
+	"x2",
+]);
 
-function sanitizeChestSpin(spin: ChestSpinOutcome | undefined): ChestSpinOutcome | undefined {
+function sanitizeChestSpin(
+	spin: ChestSpinOutcome | undefined,
+): ChestSpinOutcome | undefined {
 	if (!spin || !Array.isArray(spin.symbols) || spin.symbols.length !== 3) {
 		return undefined;
 	}

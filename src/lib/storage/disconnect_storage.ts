@@ -1,6 +1,6 @@
 const pendingDisconnects = new Map<string, NodeJS.Timeout>();
 
-const DISCONNECT_GRACE_MS = 5000;
+const DISCONNECT_GRACE_MS = 5 * 1000; //5 sec
 
 export function schedulePendingDisconnect(
 	userId: string,

@@ -3,9 +3,9 @@ import { z } from "zod";
 
 export const env = createEnv({
 	server: {
-		frontend_url: z.string().url().optional().default("http://localhost:3000"),
-		DATABASE_URL: z.string().url().optional(),
-		REDIS_URL: z.string().url().default("redis://localhost:6379"),
+		frontend_url: z.url(),
+		DATABASE_URL: z.url(),
+		REDIS_URL: z.url(),
 	},
 	runtimeEnv: {
 		frontend_url: process.env.frontend_url,

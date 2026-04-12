@@ -17,7 +17,6 @@ import {
 	removeProperty,
 } from "@/db/queries/property";
 import { setCurrentTurn } from "@/db/queries/room";
-import { numberOfPlayersInRoom } from "@/helper";
 import { transferMoney, transferProperties } from "@/helper/trade";
 import type {
 	BuyPropertyResult,
@@ -438,9 +437,10 @@ export async function resolveChestEvent(
 				behindBars: true,
 			};
 		}
+		default: throw new Error("Unknown chest event");
 	}
 
-	throw new Error("Unknown chest event");
+
 }
 
 async function ownedPropertyDamage(roomId: number, userId: string) {

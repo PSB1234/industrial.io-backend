@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Server } from "socket.io";
+import type { Server as NodeServer } from "node:http";
+import { Server, type Socket } from "socket.io";
 import {
 	adjectives,
 	animals,
@@ -37,7 +38,7 @@ import type {
 	SocketData,
 } from "@/types/type";
 
-export function initializeSocket(httpServer: import("node:http").Server) {
+export function initializeSocket(httpServer: NodeServer) {
 	const io: AppServer = new Server<
 		ClientToServerEvents,
 		ServerToClientEvents,
@@ -53,7 +54,7 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 	io.on(
 		"connection",
 		async (
-			socket: import("socket.io").Socket<
+			socket: Socket<
 				ClientToServerEvents,
 				ServerToClientEvents,
 				InterServerEvents,
@@ -99,7 +100,6 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 				}
 				socket.emit(SOCKET_EVENTS.USERNAME_ASSIGNED, socket.data.name);
 
-				// Register all handlers FIRST (synchronous)
 				registerRoomController(io, socket);
 				registerChatController(io, socket);
 				registerGameController(io, socket);
@@ -147,7 +147,6 @@ export function initializeSocket(httpServer: import("node:http").Server) {
 					}
 				});
 
-				// THEN do async work
 				await broadcastRoomList(io);
 
 				socket.on("error", (error: Error) => {

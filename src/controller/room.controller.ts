@@ -233,7 +233,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.SEND_VOTE,
-		async (roomKey: string, playerId: string, _votes: number) => {
+		async (roomKey: string, playerId: string) => {
 			try {
 				const roomId = await resolveRoomId(roomKey, socket);
 				if (!roomId) return;

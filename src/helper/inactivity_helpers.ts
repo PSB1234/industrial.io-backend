@@ -1,4 +1,5 @@
 import { getRoomStatus } from "@/db/queries/room";
+import { broadcastRoomList } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
 	clearAllInactivityState,
@@ -13,7 +14,6 @@ import {
 } from "@/lib/storage/inactivity_storage";
 import { deleteRoom } from "@/lib/utils/room_cleanup";
 import type { AppServer } from "@/types/type";
-import { broadcastRoomList } from "./room_utils";
 
 export function resetInactivityTimer(io: AppServer, roomKey: string): void {
 	// Clear any existing inactivity or warning state
