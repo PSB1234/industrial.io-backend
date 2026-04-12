@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { computeUserId, numberOfPlayersInRoom } from "@/helper";
 import {
 	resetInactivityTimer,
@@ -13,7 +14,7 @@ import { startTimerForRoom } from "@/helper/time_helpers";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import { getRemainingTime, stopRoomTimer } from "@/lib/storage/timer_storage";
 import * as roomService from "@/service/room.service";
-import type { AppServer, AppSocket } from "@/types/type";
+import type { AppServer, AppSocket, Player } from "@/types/type";
 import { createRoomSchema } from "@/types/zod";
 
 export function registerRoomController(io: AppServer, socket: AppSocket) {
@@ -21,7 +22,11 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.CREATE_ROOM,
-		async (options: any, color: string, callback: Function) => {
+		async (
+			options: z.infer<typeof createRoomSchema>,
+			color: string,
+			callback: (roomkey: string, playerList: Player[]) => void,
+		) => {
 			try {
 				const { success, data, error } = createRoomSchema.safeParse(options);
 				if (!success) {
@@ -78,7 +83,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.JOIN_RANDOM_ROOM,
-		async (color: string, callback: Function) => {
+		async (color: string, callback: (roomkey: string, playerList: Player[]) => void) => {
 			try {
 				const result = await roomService.joinRandomRoom(
 					socket.data.userid,
@@ -138,7 +143,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 			roomKey: string,
 			color: string,
 			password: string | undefined,
-			callback: Function,
+			callback: (username: string, playerList: Player[]) => void,
 		) => {
 			try {
 				if (username) {
@@ -198,7 +203,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.CHANGE_ROOM_STATUS,
-		async (roomKey: string, status: any) => {
+		async (roomKey: string, status: "waiting" | "playing" | "finished") => {
 			try {
 				const result = await roomService.changeRoomStatus(roomKey, status);
 

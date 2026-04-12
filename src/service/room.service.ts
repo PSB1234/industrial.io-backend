@@ -60,6 +60,9 @@ export async function createRoom(
 		options.type,
 		hashedPassword,
 	);
+	if (options.type === "private") {
+		await grantRoomAccess(roomId, userId);
+	}
 	const player = await createPlayer(
 		roomId,
 		userId,

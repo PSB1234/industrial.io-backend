@@ -1,10 +1,10 @@
 import { getPlayer } from "@/db/queries/player";
 import { getCurrentTurn } from "@/db/queries/room";
+import { DEFAULT_PASS_START_REWARD } from "@/helper/default_value";
 import {
 	handleActivityConfirmation,
 	resetInactivityTimer,
 } from "@/helper/inactivity_helpers";
-import { DEFAULT_PASS_START_REWARD } from "@/helper/default_value";
 import { resolveRoomId } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
@@ -22,10 +22,31 @@ import * as gameService from "@/service/game.service";
 import type {
 	AppServer,
 	AppSocket,
+	ChestSpinOutcome,
 	ChestResolutionResult,
 	MoneyUpdatePayload,
 	MoneyUpdateSource,
+	PositionResult,
+	TradeData,
 } from "@/types/type";
+
+const VALID_CHEST_SYMBOLS = new Set(["COIN", "STAR", "GEM", "BOLT", "LUCK", "x2"]);
+
+function sanitizeChestSpin(spin: ChestSpinOutcome | undefined): ChestSpinOutcome | undefined {
+	if (!spin || !Array.isArray(spin.symbols) || spin.symbols.length !== 3) {
+		return undefined;
+	}
+
+	if (!spin.symbols.every((symbol) => VALID_CHEST_SYMBOLS.has(symbol))) {
+		return undefined;
+	}
+
+	const rewardScore = Number.isFinite(spin.rewardScore) ? spin.rewardScore : 0;
+	return {
+		symbols: [spin.symbols[0], spin.symbols[1], spin.symbols[2]],
+		rewardScore,
+	};
+}
 
 export function registerGameController(io: AppServer, socket: AppSocket) {
 	const emitMoneyUpdate = (roomKey: string, payload: MoneyUpdatePayload) => {
@@ -42,6 +63,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 		async (
 			roomKey: string,
 			reason: "stopped" | "timeout",
+			spin: ChestSpinOutcome | undefined,
 			ack: (result: ChestResolutionResult) => void,
 		) => {
 			try {
@@ -57,10 +79,13 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					return;
 				}
 
+				const safeSpin = sanitizeChestSpin(spin);
+
 				const result = await gameService.resolveChestEvent(
 					roomId,
 					socket.data.userid,
 					reason,
+					safeSpin,
 				);
 
 				if (typeof result.newBalance === "number") {
@@ -194,7 +219,7 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					return;
 				}
 
-				let result;
+				let result: PositionResult;
 				if (player.behindBars) {
 					if (dice === 6) {
 						await gameService.setPlayerFreeFromJail(roomId, socket.data.userid);
@@ -351,7 +376,15 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 
 	socket.on(
 		SOCKET_EVENTS.SEND_TRADE_OFFER,
-		(userId: string, playerId: string, roomKey: string, tradeData: any) => {
+		(
+			userId: string,
+			playerId: string,
+			roomKey: string,
+			tradeData: {
+				offer: TradeData;
+				request: TradeData;
+			},
+		) => {
 			io.to(roomKey).emit(
 				SOCKET_EVENTS.RECEIVE_TRADE_OFFER,
 				userId,
@@ -368,7 +401,10 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 			fromPlayer: string,
 			toPlayer: string,
 			roomKey: string,
-			tradeData: any,
+			tradeData: {
+				offer: TradeData;
+				request: TradeData;
+			},
 			status: "accepted" | "rejected",
 		) => {
 			try {

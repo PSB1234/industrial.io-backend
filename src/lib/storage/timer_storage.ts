@@ -2,7 +2,7 @@ const roomTimers = new Map<string, NodeJS.Timeout>();
 const roomTimerStartTimes = new Map<string, number>();
 const roomTickIntervals = new Map<string, NodeJS.Timeout>();
 
-export const TIMER_DURATION_MS = 120000; // 2 minutes
+export const TIMER_DURATION_MS = 2 * 60 * 1000; // 2 minutes
 export const TIMER_TICK_INTERVAL_MS = 1000; // 1 second
 
 export const startRoomTimer = (roomKey: string): void => {

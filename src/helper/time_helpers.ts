@@ -13,6 +13,8 @@ import { deleteRoom } from "@/lib/utils/room_cleanup";
 import type { AppServer } from "@/types/type";
 import { broadcastRoomList } from "./room_utils";
 
+const expiringRooms = new Set<string>();
+
 export function startTimerForRoom(io: AppServer, roomKey: string): void {
 	stopRoomTimer(roomKey);
 	startRoomTimer(roomKey);
@@ -57,8 +59,18 @@ export async function handleTimerExpired(
 	io: AppServer,
 	roomKey: string,
 ): Promise<void> {
+	if (expiringRooms.has(roomKey)) {
+		console.log(
+			`Timer expiration already in progress for room ${roomKey}, skipping duplicate call`,
+		);
+		return;
+	}
+
+	expiringRooms.add(roomKey);
+
 	const currentStatus = await getRoomStatus(roomKey);
 	if (!currentStatus || currentStatus !== "waiting") {
+		expiringRooms.delete(roomKey);
 		console.log(
 			`Timer expiration skipped for room ${roomKey} - room does not exist or is not in waiting state`,
 		);
@@ -72,19 +84,23 @@ export async function handleTimerExpired(
 
 	setImmediate(() => {
 		void (async () => {
-			const socketsInRoom = io.of("/").adapter.rooms.get(roomKey);
-			if (socketsInRoom) {
-				for (const socketId of socketsInRoom) {
-					const roomSocket = io.sockets.sockets.get(socketId);
-					if (roomSocket) {
-						roomSocket.leave(roomKey);
+			try {
+				const socketsInRoom = io.of("/").adapter.rooms.get(roomKey);
+				if (socketsInRoom) {
+					for (const socketId of socketsInRoom) {
+						const roomSocket = io.sockets.sockets.get(socketId);
+						if (roomSocket) {
+							roomSocket.leave(roomKey);
+						}
 					}
 				}
-			}
 
-			await deleteRoom(roomKey);
-			await broadcastRoomList(io);
-			io.emit(SOCKET_EVENTS.ROOM_AUTO_DELETED, roomKey);
+				await deleteRoom(roomKey);
+				await broadcastRoomList(io);
+				io.emit(SOCKET_EVENTS.ROOM_AUTO_DELETED, roomKey);
+			} finally {
+				expiringRooms.delete(roomKey);
+			}
 		})().catch((error) => {
 			console.error(`Failed to auto-delete room ${roomKey}:`, error);
 		});

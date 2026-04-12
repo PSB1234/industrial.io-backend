@@ -21,8 +21,11 @@ import { numberOfPlayersInRoom } from "@/helper";
 import { transferMoney, transferProperties } from "@/helper/trade";
 import type {
 	BuyPropertyResult,
+	ChestEventId,
 	ChestResolutionReason,
 	ChestResolutionResult,
+	ChestSpinOutcome,
+	ChestSymbol,
 	MoneyResult,
 	PositionResult,
 	TradeConfirmResult,
@@ -173,6 +176,37 @@ const CHEST_EVENTS = [
 	"investigation-jail",
 ] as const;
 
+const CHEST_REWARD_BY_SYMBOL: Record<ChestSymbol, number> = {
+	COIN: 0,
+	STAR: 10,
+	GEM: 20,
+	BOLT: 30,
+	LUCK: 40,
+	x2: 50,
+};
+
+const LOW_REWARD_EVENTS: ChestEventId[] = [
+	"medical-emergency",
+	"property-damage",
+	"fraud-scandal",
+	"market-crash",
+	"investigation-jail",
+];
+
+const MID_REWARD_EVENTS: ChestEventId[] = [
+	"tax-refund",
+	"startup-success-bonus",
+	"property-upgrade-grant",
+	"lucky-investment",
+];
+
+const HIGH_REWARD_EVENTS: ChestEventId[] = [
+	"unexpected-inheritance",
+	"startup-success-bonus",
+	"lucky-investment",
+	"property-upgrade-grant",
+];
+
 const formatRupees = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 
 async function applyMoneyDelta(
@@ -187,17 +221,49 @@ async function applyMoneyDelta(
 	return deductMoney(roomId, userId, Math.abs(amount));
 }
 
+function resolveChestScore(spin: ChestSpinOutcome | undefined): number | undefined {
+	if (!spin) return undefined;
+	const symbolScore = spin.symbols.reduce(
+		(total, symbol) => total + CHEST_REWARD_BY_SYMBOL[symbol],
+		0,
+	);
+
+	if (!Number.isFinite(spin.rewardScore)) {
+		return symbolScore;
+	}
+
+	// Prefer backend-derived value if client payload was tampered.
+	return symbolScore;
+}
+
+function getEventPoolByScore(score: number): ChestEventId[] {
+	if (score >= 90) return HIGH_REWARD_EVENTS;
+	if (score >= 50) return MID_REWARD_EVENTS;
+	return LOW_REWARD_EVENTS;
+}
+
+function pickEventBySpin(spin: ChestSpinOutcome | undefined): ChestEventId {
+	const score = resolveChestScore(spin);
+	if (typeof score !== "number") {
+		return CHEST_EVENTS[Math.floor(Math.random() * CHEST_EVENTS.length)] ?? CHEST_EVENTS[0];
+	}
+
+	const pool = getEventPoolByScore(score);
+	return pool[Math.floor(Math.random() * pool.length)] ?? CHEST_EVENTS[0];
+}
+
 export async function resolveChestEvent(
 	roomId: number,
 	userId: string,
 	reason: ChestResolutionReason,
+	spin?: ChestSpinOutcome,
 ): Promise<ChestResolutionResult> {
 	const player = await getPlayer(roomId, userId);
 	if (!player) {
 		throw new Error("Player not found");
 	}
 
-	const eventId = CHEST_EVENTS[Math.floor(Math.random() * CHEST_EVENTS.length)];
+	const eventId = pickEventBySpin(spin);
 
 	switch (eventId) {
 		case "unexpected-inheritance": {
