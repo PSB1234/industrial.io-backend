@@ -89,11 +89,6 @@ export function initializeSocket(httpServer: NodeServer) {
 				const hasConnected = handleConnection(userId);
 
 				const wasPending = cancelPendingDisconnect(userId);
-				if (wasPending) {
-					console.log(
-						`User ${userId} reconnected, cancelled pending disconnect`,
-					);
-				}
 
 				if (hasConnected) {
 					io.emit(SOCKET_EVENTS.USER_CONNECTED, socket.data.name);
@@ -115,21 +110,11 @@ export function initializeSocket(httpServer: NodeServer) {
 						const roomId = await resolveRoomId(roomKey, socket);
 						if (!roomId) return;
 
-						console.log(
-							`User ${userId} disconnected from room ${roomKey}, scheduling cleanup`,
-						);
-
 						schedulePendingDisconnect(userId, async () => {
 							if (isUserConnected(userId)) {
-								console.log(
-									`User ${userId} already reconnected, skipping cleanup`,
-								);
 								return;
 							}
 
-							console.log(
-								`Grace period expired for ${userId}, cleaning up room ${roomKey}`,
-							);
 							const result = await roomService.leaveRoom(
 								roomId,
 								roomKey,
@@ -156,7 +141,5 @@ export function initializeSocket(httpServer: NodeServer) {
 				console.error("Connection error:", error);
 				socket.disconnect();
 			}
-		},
-	);
-	console.log("Socket.IO initialized");
-}
+		})
+};

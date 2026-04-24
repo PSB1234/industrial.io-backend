@@ -9,6 +9,4 @@ export async function deleteRoom(roomKey: string): Promise<void> {
 	clearAllInactivityState(roomKey);
 	clearTurnCount(roomKey);
 	await deleteRoomByKey(roomKey);
-
-	console.log(`Room ${roomKey} fully deleted from database`);
 }

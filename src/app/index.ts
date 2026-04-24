@@ -41,5 +41,4 @@ await connectRedis();
 
 //start server
 httpServer.listen(port, () => {
-	console.log("listening on *:", port);
 });

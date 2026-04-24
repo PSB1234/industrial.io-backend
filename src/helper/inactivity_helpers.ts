@@ -81,8 +81,6 @@ async function handleInactivityExpired(
 		return;
 	}
 
-	console.log(`Inactivity timer expired for room ${roomKey}, deleting room`);
-
 	clearAllInactivityState(roomKey);
 
 	// Notify all clients the room is being deleted

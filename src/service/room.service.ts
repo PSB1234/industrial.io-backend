@@ -270,7 +270,6 @@ export async function leaveRoom(
 	}
 
 	if (roomEmpty) {
-		console.log(`Room ${roomKey} is empty, deleting room`);
 		await deleteRoom(roomKey);
 	}
 

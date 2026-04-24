@@ -60,9 +60,6 @@ export async function handleTimerExpired(
 	roomKey: string,
 ): Promise<void> {
 	if (expiringRooms.has(roomKey)) {
-		console.log(
-			`Timer expiration already in progress for room ${roomKey}, skipping duplicate call`,
-		);
 		return;
 	}
 
@@ -71,13 +68,8 @@ export async function handleTimerExpired(
 	const currentStatus = await getRoomStatus(roomKey);
 	if (!currentStatus || currentStatus !== "waiting") {
 		expiringRooms.delete(roomKey);
-		console.log(
-			`Timer expiration skipped for room ${roomKey} - room does not exist or is not in waiting state`,
-		);
 		return;
 	}
-
-	console.log(`Timer expired for room ${roomKey}, deleting room`);
 
 	stopRoomTimer(roomKey);
 	io.to(roomKey).emit(SOCKET_EVENTS.TIMER_EXPIRED);

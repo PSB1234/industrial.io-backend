@@ -68,12 +68,8 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 					result.currentTurn,
 				);
 				socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
-				await broadcastRoomList(io);
-
-				console.log(
-					`User ${socket.id} created & joined room: ${result.roomKey}`,
-				);
-			} catch (error) {
+await broadcastRoomList(io);
+		} catch (error) {
 				console.error("Error creating room:", error);
 				socket.emit(SOCKET_EVENTS.ERROR, "Joining Room Failed");
 			}
@@ -122,10 +118,9 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				await broadcastRoomList(io);
 
 				if (typeof callback === "function") {
-					callback(result.roomKey, result.players);
-				}
+callback(result.roomKey, result.players);
+			}
 
-				console.log(`User joined room: ${result.roomKey}`);
 			} catch (error) {
 				console.error("Error joining room:", error);
 				const msg =
@@ -170,7 +165,6 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				socket.join(result.roomKey);
 
 				callback(socket.data.name, result.players);
-				console.log(`User ${username} joined room: ${result.roomKey}`);
 
 				socket.emit(SOCKET_EVENTS.CHAT_HISTORY, result.chatHistory);
 
