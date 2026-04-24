@@ -250,15 +250,29 @@ export async function leaveRoom(
 	roomKey: string,
 	userId: string,
 ): Promise<LeaveResult> {
+	const roomStatus = await getRoomStatus(roomKey);
+
 	await deletePlayer(roomId, userId);
 
 	const remaining = await getPlayerCountInRoom(roomId);
 	const roomEmpty = remaining === 0;
+
+	let gameFinished = false;
+	let winner: { id: string; username: string } | undefined;
+
+	if (!roomEmpty && roomStatus === "playing" && remaining === 1) {
+		const players = await getPlayersInRoom(roomId);
+		const lastPlayer = players[0];
+		if (lastPlayer) {
+			gameFinished = true;
+			winner = { id: lastPlayer.id, username: lastPlayer.username };
+		}
+	}
 
 	if (roomEmpty) {
 		console.log(`Room ${roomKey} is empty, deleting room`);
 		await deleteRoom(roomKey);
 	}
 
-	return { userId, roomEmpty };
+	return { userId, roomEmpty, gameFinished, winner };
 }

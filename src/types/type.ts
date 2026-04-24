@@ -24,6 +24,7 @@ export interface ServerToClientEvents {
     [SOCKET_EVENTS.USERNAME_ASSIGNED]: (username: string) => void;
     [SOCKET_EVENTS.GET_ALL_ROOMS]: (roomsData: RoomData[]) => void;
     [SOCKET_EVENTS.PLAYER_LEFT]: (socket_id: string) => void;
+    [SOCKET_EVENTS.GAME_FINISHED]: (winnerId: string, winnerName: string) => void;
     [SOCKET_EVENTS.GAME_LOOP]: (receivedRoomKey: string, player: Player) => void;
     [SOCKET_EVENTS.ERROR]: (message: string) => void;
     [SOCKET_EVENTS.RECEIVE_MESSAGE]: (message: string, username: string) => void;
@@ -346,7 +347,12 @@ export type ChangeStatusResult = {
     newStatus: string;
     timerAction: "start" | "stop" | "none";
 };
-export type LeaveResult = { userId: string; roomEmpty: boolean };
+export type LeaveResult = {
+    userId: string;
+    roomEmpty: boolean;
+    gameFinished?: boolean;
+    winner?: { id: string; username: string };
+};
 
 // Convenience aliases to avoid repeating the 4 generics everywhere
 export type AppServer = Server<

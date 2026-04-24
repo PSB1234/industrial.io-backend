@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { computeUserId, numberOfPlayersInRoom } from "@/helper";
+import { changeRoomStatus } from "@/service/room.service";
 import {
 	resetInactivityTimer,
 	stopInactivityTracking,
@@ -314,6 +315,15 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				if (result.roomEmpty) {
 					stopRoomTimer(roomKey);
 					stopInactivityTracking(roomKey);
+				}
+
+				if (result.gameFinished && result.winner) {
+					await changeRoomStatus(roomKey, "finished");
+					io.to(roomKey).emit(
+						SOCKET_EVENTS.GAME_FINISHED,
+						result.winner.id,
+						result.winner.username,
+					);
 				}
 
 				await broadcastRoomList(io);
