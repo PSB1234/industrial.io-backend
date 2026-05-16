@@ -68,8 +68,8 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 					result.currentTurn,
 				);
 				socket.emit(SOCKET_EVENTS.YOUR_VOTES, result.votedPlayers);
-await broadcastRoomList(io);
-		} catch (error) {
+				await broadcastRoomList(io);
+			} catch (error) {
 				console.error("Error creating room:", error);
 				socket.emit(SOCKET_EVENTS.ERROR, "Joining Room Failed");
 			}
@@ -80,7 +80,10 @@ await broadcastRoomList(io);
 
 	socket.on(
 		SOCKET_EVENTS.JOIN_RANDOM_ROOM,
-		async (color: string, callback: (roomkey: string, playerList: Player[]) => void) => {
+		async (
+			color: string,
+			callback: (roomkey: string, playerList: Player[]) => void,
+		) => {
 			try {
 				const result = await roomService.joinRandomRoom(
 					socket.data.userid,
@@ -118,9 +121,8 @@ await broadcastRoomList(io);
 				await broadcastRoomList(io);
 
 				if (typeof callback === "function") {
-callback(result.roomKey, result.players);
-			}
-
+					callback(result.roomKey, result.players);
+				}
 			} catch (error) {
 				console.error("Error joining room:", error);
 				const msg =

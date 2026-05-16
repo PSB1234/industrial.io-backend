@@ -37,6 +37,11 @@ import type {
 	ServerToClientEvents,
 	SocketData,
 } from "@/types/type";
+import { db } from "@/db";
+import { players } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { getPlayersInRoom } from "@/db/queries/player";
+import { delCache } from "@/db/redis";
 
 export function initializeSocket(httpServer: NodeServer) {
 	const io: AppServer = new Server<
@@ -99,6 +104,58 @@ export function initializeSocket(httpServer: NodeServer) {
 				registerChatController(io, socket);
 				registerGameController(io, socket);
 
+				socket.on(
+					SOCKET_EVENTS.CHANGE_NAME,
+					async (
+						newName: string,
+						callback?: (success: boolean, username: string) => void,
+					) => {
+						try {
+							if (!newName || newName.trim() === "") {
+								if (callback) callback(false, socket.data.name);
+								return;
+							}
+
+							const trimmedName = newName.trim().slice(0, 20); // enforce max length if needed
+							socket.data.name = trimmedName;
+
+							// If the player is in a room, update the database
+							if (socket.data.dbPlayerId && socket.data.roomKey) {
+								try {
+
+									await db
+										.update(players)
+										.set({ username: trimmedName })
+										.where(eq(players.id, socket.data.dbPlayerId));
+
+									await delCache(`room:players:${socket.data.dbRoomId}`);
+									const playersList = await getPlayersInRoom(
+										socket.data.dbRoomId,
+									);
+									const updatedPlayer = playersList.find(
+										(p) => p.id === socket.data.userid,
+									);
+									if (updatedPlayer) {
+										io.to(socket.data.roomKey).emit(
+											SOCKET_EVENTS.GAME_LOOP,
+											socket.data.roomKey,
+											updatedPlayer,
+										);
+									}
+								} catch (err) {
+									console.error("Failed to update name in db", err);
+								}
+							}
+
+							if (callback) callback(true, trimmedName);
+							socket.emit(SOCKET_EVENTS.USERNAME_ASSIGNED, trimmedName);
+						} catch (error) {
+							console.error("Error changing name:", error);
+							if (callback) callback(false, socket.data.name);
+						}
+					},
+				);
+
 				socket.on("disconnect", async () => {
 					try {
 						const isFullyDisconnected = handleDisconnection(userId);
@@ -141,5 +198,6 @@ export function initializeSocket(httpServer: NodeServer) {
 				console.error("Connection error:", error);
 				socket.disconnect();
 			}
-		})
-};
+		},
+	);
+}

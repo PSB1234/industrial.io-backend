@@ -40,5 +40,4 @@ initializeSocket(httpServer);
 await connectRedis();
 
 //start server
-httpServer.listen(port, () => {
-});
+httpServer.listen(port, () => {});

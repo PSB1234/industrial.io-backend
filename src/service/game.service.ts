@@ -220,7 +220,9 @@ async function applyMoneyDelta(
 	return deductMoney(roomId, userId, Math.abs(amount));
 }
 
-function resolveChestScore(spin: ChestSpinOutcome | undefined): number | undefined {
+function resolveChestScore(
+	spin: ChestSpinOutcome | undefined,
+): number | undefined {
 	if (!spin) return undefined;
 	const symbolScore = spin.symbols.reduce(
 		(total, symbol) => total + CHEST_REWARD_BY_SYMBOL[symbol],
@@ -244,7 +246,10 @@ function getEventPoolByScore(score: number): ChestEventId[] {
 function pickEventBySpin(spin: ChestSpinOutcome | undefined): ChestEventId {
 	const score = resolveChestScore(spin);
 	if (typeof score !== "number") {
-		return CHEST_EVENTS[Math.floor(Math.random() * CHEST_EVENTS.length)] ?? CHEST_EVENTS[0];
+		return (
+			CHEST_EVENTS[Math.floor(Math.random() * CHEST_EVENTS.length)] ??
+			CHEST_EVENTS[0]
+		);
 	}
 
 	const pool = getEventPoolByScore(score);
@@ -437,10 +442,9 @@ export async function resolveChestEvent(
 				behindBars: true,
 			};
 		}
-		default: throw new Error("Unknown chest event");
+		default:
+			throw new Error("Unknown chest event");
 	}
-
-
 }
 
 async function ownedPropertyDamage(roomId: number, userId: string) {
