@@ -76,3 +76,21 @@ export function notifyPlayerLeft(
 	io.to(roomKey).emit(SOCKET_EVENTS.USER_DISCONNECTED, userId);
 	io.to(roomKey).emit(SOCKET_EVENTS.PLAYER_LEFT, userId);
 }
+
+export async function handleTurnAfterLeave(
+	io: AppServer,
+	roomKey: string,
+	roomId: number,
+	leavingPlayerRank?: number
+) {
+	if (leavingPlayerRank === undefined) return;
+	const { getCurrentTurn } = await import("@/db/queries/room");
+	const gameService = await import("@/service/game.service");
+	const currentTurn = await getCurrentTurn(roomKey);
+	if (currentTurn === leavingPlayerRank) {
+		const turnResult = await gameService.advanceTurn(roomKey, roomId, currentTurn);
+		if (turnResult) {
+			io.to(roomKey).emit(SOCKET_EVENTS.RECEIVE_TURN, turnResult.nextTurn);
+		}
+	}
+}

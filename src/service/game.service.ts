@@ -42,10 +42,11 @@ export async function advanceTurn(
 	const totalPlayers = players.length;
 	if (totalPlayers === 0) return null;
 
+	const maxRank = Math.max(...players.map((p) => p.rank));
 	let nextTurn = currentTurn;
-	for (let attempt = 0; attempt < totalPlayers; attempt++) {
+	for (let attempt = 0; attempt < maxRank; attempt++) {
 		nextTurn += 1;
-		if (nextTurn > totalPlayers) {
+		if (nextTurn > maxRank) {
 			nextTurn = 1;
 		}
 

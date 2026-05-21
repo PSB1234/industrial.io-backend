@@ -21,6 +21,7 @@ import {
 	broadcastRoomList,
 	notifyPlayerLeft,
 	resolveRoomId,
+	handleTurnAfterLeave,
 } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
@@ -178,6 +179,7 @@ export function initializeSocket(httpServer: NodeServer) {
 								userId,
 							);
 							notifyPlayerLeft(io, roomKey, result.userId);
+							await handleTurnAfterLeave(io, roomKey, roomId, result.leavingPlayerRank);
 							if (result.roomEmpty) {
 								stopRoomTimer(roomKey);
 								clearAllInactivityState(roomKey);

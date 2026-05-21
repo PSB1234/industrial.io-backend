@@ -252,6 +252,9 @@ export async function leaveRoom(
 ): Promise<LeaveResult> {
 	const roomStatus = await getRoomStatus(roomKey);
 
+	const allPlayers = await getPlayersInRoom(roomId);
+	const leavingPlayerRank = allPlayers.find((p) => p.id === userId)?.rank;
+
 	await deletePlayer(roomId, userId);
 
 	const remaining = await getPlayerCountInRoom(roomId);
@@ -273,5 +276,5 @@ export async function leaveRoom(
 		await deleteRoom(roomKey);
 	}
 
-	return { userId, roomEmpty, gameFinished, winner };
+	return { userId, roomEmpty, gameFinished, winner, leavingPlayerRank };
 }

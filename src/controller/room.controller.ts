@@ -9,6 +9,7 @@ import {
 	broadcastRoomList,
 	notifyPlayerLeft,
 	resolveRoomId,
+	handleTurnAfterLeave,
 } from "@/helper/room_utils";
 import { hydrateSocketData, resetSocketRoomData } from "@/helper/socket_data";
 import { startTimerForRoom } from "@/helper/time_helpers";
@@ -17,7 +18,8 @@ import { getRemainingTime, stopRoomTimer } from "@/lib/storage/timer_storage";
 import * as roomService from "@/service/room.service";
 import type { AppServer, AppSocket, Player } from "@/types/type";
 import { createRoomSchema } from "@/types/zod";
-
+import * as gameService from "@/service/game.service";
+import { getCurrentTurn } from "@/db/queries/room";
 export function registerRoomController(io: AppServer, socket: AppSocket) {
 	// ── Create Room ──────────────────────────────────────────────
 
@@ -275,6 +277,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 					}
 
 					notifyPlayerLeft(io, roomKey, leaveResult.userId);
+					await handleTurnAfterLeave(io, roomKey, roomId, leaveResult.leavingPlayerRank);
 
 					if (leaveResult.roomEmpty) {
 						stopRoomTimer(roomKey);
@@ -307,6 +310,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				}
 
 				notifyPlayerLeft(io, roomKey, result.userId);
+				await handleTurnAfterLeave(io, roomKey, roomId, result.leavingPlayerRank);
 
 				if (result.roomEmpty) {
 					stopRoomTimer(roomKey);
@@ -344,6 +348,7 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 			resetSocketRoomData(socket);
 
 			notifyPlayerLeft(io, roomKey, result.userId);
+			await handleTurnAfterLeave(io, roomKey, roomId, result.leavingPlayerRank);
 
 			if (result.roomEmpty) {
 				stopRoomTimer(roomKey);

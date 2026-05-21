@@ -356,6 +356,7 @@ export type LeaveResult = {
 	roomEmpty: boolean;
 	gameFinished?: boolean;
 	winner?: { id: string; username: string };
+	leavingPlayerRank?: number;
 };
 
 // Convenience aliases to avoid repeating the 4 generics everywhere
