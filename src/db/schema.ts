@@ -54,6 +54,7 @@ export const players = pgTable(
 		joinedAt: timestamp("joined_at").defaultNow().notNull(),
 		behindBars: boolean("behind_bars").default(false).notNull(),
 		skipTurn: boolean("skip_turn").default(false).notNull(),
+		getOutOfJailCards: integer("get_out_of_jail_cards").default(0).notNull(),
 	},
 	(t) => [unique().on(t.roomId, t.userId)],
 );

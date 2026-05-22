@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Server as NodeServer } from "node:http";
+import { eq } from "drizzle-orm";
 import { Server, type Socket } from "socket.io";
 import {
 	adjectives,
@@ -10,6 +11,10 @@ import {
 import { registerChatController } from "@/controller/chat.controller";
 import { registerGameController } from "@/controller/game.controller";
 import { registerRoomController } from "@/controller/room.controller";
+import { db } from "@/db";
+import { getPlayersInRoom } from "@/db/queries/player";
+import { delCache } from "@/db/redis";
+import { players } from "@/db/schema";
 import { env } from "@/env";
 import {
 	computeUserId,
@@ -19,9 +24,9 @@ import {
 } from "@/helper";
 import {
 	broadcastRoomList,
+	handleTurnAfterLeave,
 	notifyPlayerLeft,
 	resolveRoomId,
-	handleTurnAfterLeave,
 } from "@/helper/room_utils";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import {
@@ -38,11 +43,6 @@ import type {
 	ServerToClientEvents,
 	SocketData,
 } from "@/types/type";
-import { db } from "@/db";
-import { players } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { getPlayersInRoom } from "@/db/queries/player";
-import { delCache } from "@/db/redis";
 
 export function initializeSocket(httpServer: NodeServer) {
 	const io: AppServer = new Server<
@@ -123,7 +123,6 @@ export function initializeSocket(httpServer: NodeServer) {
 							// If the player is in a room, update the database
 							if (socket.data.dbPlayerId && socket.data.roomKey) {
 								try {
-
 									await db
 										.update(players)
 										.set({ username: trimmedName })
@@ -179,7 +178,12 @@ export function initializeSocket(httpServer: NodeServer) {
 								userId,
 							);
 							notifyPlayerLeft(io, roomKey, result.userId);
-							await handleTurnAfterLeave(io, roomKey, roomId, result.leavingPlayerRank);
+							await handleTurnAfterLeave(
+								io,
+								roomKey,
+								roomId,
+								result.leavingPlayerRank,
+							);
 							if (result.roomEmpty) {
 								stopRoomTimer(roomKey);
 								clearAllInactivityState(roomKey);

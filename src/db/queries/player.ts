@@ -116,6 +116,7 @@ export async function getPlayer(
 	leader: boolean;
 	behindBars: boolean;
 	skipTurn: boolean;
+	getOutOfJailCards: number;
 } | null> {
 	const [player] = await db
 		.select({
@@ -130,6 +131,7 @@ export async function getPlayer(
 			leader: players.isLeader,
 			behindBars: players.behindBars,
 			skipTurn: players.skipTurn,
+			getOutOfJailCards: players.getOutOfJailCards,
 		})
 		.from(players)
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)))
@@ -159,6 +161,7 @@ export async function getPlayersInRoom(
 				leader: players.isLeader,
 				behindBars: players.behindBars,
 				skipTurn: players.skipTurn,
+				getOutOfJailCards: players.getOutOfJailCards,
 			})
 			.from(players)
 			.where(eq(players.roomId, roomId))
@@ -204,6 +207,7 @@ export async function getPlayersInRoom(
 		leader: player.leader,
 		behindBars: player.behindBars,
 		skipTurn: player.skipTurn,
+		getOutOfJailCards: player.getOutOfJailCards,
 		properties: propertiesByPlayer.get(player.dbId) ?? [],
 		votes: votesByPlayer.get(player.dbId) ?? 0,
 	}));
@@ -327,6 +331,20 @@ export async function setPlayerSkipTurn(
 	await db
 		.update(players)
 		.set({ skipTurn })
+		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
+	await delCache(`room:players:${roomId}`);
+}
+
+export async function updatePlayerGetOutOfJailCard(
+	roomId: number,
+	userId: string,
+	amountDelta: number,
+): Promise<void> {
+	await db
+		.update(players)
+		.set({
+			getOutOfJailCards: sql`${players.getOutOfJailCards} + ${amountDelta}`,
+		})
 		.where(and(eq(players.roomId, roomId), eq(players.userId, userId)));
 	await delCache(`room:players:${roomId}`);
 }

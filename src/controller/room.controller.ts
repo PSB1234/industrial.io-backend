@@ -1,25 +1,25 @@
 import type { z } from "zod";
+import { getCurrentTurn } from "@/db/queries/room";
 import { computeUserId, numberOfPlayersInRoom } from "@/helper";
-import { changeRoomStatus } from "@/service/room.service";
 import {
 	resetInactivityTimer,
 	stopInactivityTracking,
 } from "@/helper/inactivity_helpers";
 import {
 	broadcastRoomList,
+	handleTurnAfterLeave,
 	notifyPlayerLeft,
 	resolveRoomId,
-	handleTurnAfterLeave,
 } from "@/helper/room_utils";
 import { hydrateSocketData, resetSocketRoomData } from "@/helper/socket_data";
 import { startTimerForRoom } from "@/helper/time_helpers";
 import { SOCKET_EVENTS } from "@/lib/socket_events";
 import { getRemainingTime, stopRoomTimer } from "@/lib/storage/timer_storage";
+import * as gameService from "@/service/game.service";
 import * as roomService from "@/service/room.service";
+import { changeRoomStatus } from "@/service/room.service";
 import type { AppServer, AppSocket, Player } from "@/types/type";
 import { createRoomSchema } from "@/types/zod";
-import * as gameService from "@/service/game.service";
-import { getCurrentTurn } from "@/db/queries/room";
 export function registerRoomController(io: AppServer, socket: AppSocket) {
 	// ── Create Room ──────────────────────────────────────────────
 
@@ -277,7 +277,12 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 					}
 
 					notifyPlayerLeft(io, roomKey, leaveResult.userId);
-					await handleTurnAfterLeave(io, roomKey, roomId, leaveResult.leavingPlayerRank);
+					await handleTurnAfterLeave(
+						io,
+						roomKey,
+						roomId,
+						leaveResult.leavingPlayerRank,
+					);
 
 					if (leaveResult.roomEmpty) {
 						stopRoomTimer(roomKey);
@@ -310,7 +315,12 @@ export function registerRoomController(io: AppServer, socket: AppSocket) {
 				}
 
 				notifyPlayerLeft(io, roomKey, result.userId);
-				await handleTurnAfterLeave(io, roomKey, roomId, result.leavingPlayerRank);
+				await handleTurnAfterLeave(
+					io,
+					roomKey,
+					roomId,
+					result.leavingPlayerRank,
+				);
 
 				if (result.roomEmpty) {
 					stopRoomTimer(roomKey);

@@ -7,6 +7,7 @@ import {
 	getPlayersInRoom,
 	jailPlayer,
 	setPlayerSkipTurn,
+	updatePlayerGetOutOfJailCard,
 	updatePlayerMoney,
 	updatePlayerPosition,
 } from "@/db/queries/player";
@@ -17,7 +18,11 @@ import {
 	removeProperty,
 } from "@/db/queries/property";
 import { setCurrentTurn } from "@/db/queries/room";
-import { transferMoney, transferProperties } from "@/helper/trade";
+import {
+	transferJailCards,
+	transferMoney,
+	transferProperties,
+} from "@/helper/trade";
 import type {
 	BuyPropertyResult,
 	ChestEventId,
@@ -97,6 +102,7 @@ export async function setPlayerToJail(
 	]);
 	return { userId };
 }
+export { getPlayer, updatePlayerGetOutOfJailCard };
 export async function setPlayerFreeFromJail(
 	roomId: number,
 	userId: string,
@@ -163,6 +169,48 @@ export async function upgradeProperty(
 	};
 }
 
+export async function sellOrDowngradeProperty(
+	roomId: number,
+	userId: string,
+	propertyId: number,
+	refundAmount: number,
+): Promise<{
+	propertyId: number;
+	userId: string;
+	newRank: number;
+	newBalance: number;
+} | null> {
+	const currentRank = await getPropertyRank(roomId, userId, propertyId);
+	if (currentRank < 0) return null;
+
+	if (currentRank > 0) {
+		// Downgrade
+		await removeProperty(roomId, userId, propertyId);
+		await assignProperty(roomId, userId, propertyId, currentRank - 1);
+		await addPlayerMoney(roomId, userId, refundAmount);
+
+		const newBalance = await getPlayerMoney(roomId, userId);
+		return {
+			propertyId,
+			userId,
+			newRank: currentRank - 1,
+			newBalance,
+		};
+	} else {
+		// Sell completely (rank 0 is normal tile)
+		await removeProperty(roomId, userId, propertyId);
+		await addPlayerMoney(roomId, userId, refundAmount);
+
+		const newBalance = await getPlayerMoney(roomId, userId);
+		return {
+			propertyId,
+			userId,
+			newRank: -1, // indicates sold
+			newBalance,
+		};
+	}
+}
+
 const CHEST_EVENTS = [
 	"unexpected-inheritance",
 	"startup-success-bonus",
@@ -174,6 +222,7 @@ const CHEST_EVENTS = [
 	"fraud-scandal",
 	"market-crash",
 	"investigation-jail",
+	"get-out-of-jail",
 ] as const;
 
 const CHEST_REWARD_BY_SYMBOL: Record<ChestSymbol, number> = {
@@ -443,6 +492,17 @@ export async function resolveChestEvent(
 				behindBars: true,
 			};
 		}
+		case "get-out-of-jail": {
+			await updatePlayerGetOutOfJailCard(roomId, userId, 1);
+			return {
+				eventId,
+				title: "Get Out of Jail",
+				description:
+					"You found a secret pass. Keep this card to get out of jail later.",
+				rewardText: "1x Pass",
+				reason,
+			};
+		}
 		default:
 			throw new Error("Unknown chest event");
 	}
@@ -475,6 +535,14 @@ export async function confirmTrade(
 					tradeData.offer.properties,
 				),
 				transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount),
+				tradeData.offer.getOutOfJailCards
+					? transferJailCards(
+						roomId,
+						fromPlayer,
+						toPlayer,
+						tradeData.offer.getOutOfJailCards,
+					)
+					: Promise.resolve(),
 			]);
 			transferredProperties.push(...transferred);
 		}
@@ -488,6 +556,14 @@ export async function confirmTrade(
 					tradeData.request.properties,
 				),
 				transferMoney(roomId, toPlayer, fromPlayer, tradeData.request.amount),
+				tradeData.request.getOutOfJailCards
+					? transferJailCards(
+						roomId,
+						toPlayer,
+						fromPlayer,
+						tradeData.request.getOutOfJailCards,
+					)
+					: Promise.resolve(),
 			]);
 			transferredProperties.push(...transferred);
 		}

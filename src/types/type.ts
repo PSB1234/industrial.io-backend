@@ -16,6 +16,7 @@ export type PlayerSnapshot = {
 	leader: boolean;
 	behindBars: boolean;
 	skipTurn: boolean;
+	getOutOfJailCards: number;
 };
 
 export interface ServerToClientEvents {
@@ -66,6 +67,7 @@ export interface ServerToClientEvents {
 		tradeData: { offer: TradeData; request: TradeData },
 		status: "accepted" | "rejected",
 	) => void;
+	[SOCKET_EVENTS.JAIL_CARD_ACTIVATED]: (userId: string) => void;
 	[SOCKET_EVENTS.CHAT_HISTORY]: (
 		messages: Array<{ message: string; username: string }>,
 	) => void;
@@ -75,6 +77,27 @@ export interface ServerToClientEvents {
 	[SOCKET_EVENTS.INACTIVITY_WARNING]: (countdown: number) => void;
 	[SOCKET_EVENTS.INACTIVITY_TICK]: (remainingSeconds: number) => void;
 	[SOCKET_EVENTS.INACTIVITY_RESET]: () => void;
+	[SOCKET_EVENTS.PROPERTY_SOLD]: (
+		propertyId: number,
+		userId: string,
+		newRank: number,
+	) => void;
+	[SOCKET_EVENTS.AUCTION_STARTED]: (
+		propertyId: number,
+		basePrice: number,
+		bid: number,
+		bidder: string | null,
+	) => void;
+	[SOCKET_EVENTS.AUCTION_UPDATED]: (
+		propertyId: number,
+		bid: number,
+		bidder: string | null,
+	) => void;
+	[SOCKET_EVENTS.AUCTION_ENDED]: (
+		propertyId: number,
+		winnerId: string | null,
+		winningBid: number,
+	) => void;
 	[SOCKET_EVENTS.RESOLVE_CHEST]: (
 		roomKey: string,
 		reason: ChestResolutionReason,
@@ -154,8 +177,28 @@ export interface ClientToServerEvents {
 		tradeData: { offer: TradeData; request: TradeData },
 		status: "accepted" | "rejected",
 	) => void;
+	[SOCKET_EVENTS.ACTIVATE_JAIL_CARD]: (
+		roomKey: string,
+		callback?: (success: boolean, message?: string) => void,
+	) => void;
 	[SOCKET_EVENTS.GO_TO_JAIL]: (userId: string, game_id: string) => void;
-	[SOCKET_EVENTS.COLLECT_TAX]: (userId: string, game_id: string) => void;
+	[SOCKET_EVENTS.START_AUCTION]: (
+		propertyId: number,
+		userId: string,
+		roomKey: string,
+	) => void;
+	[SOCKET_EVENTS.PLACE_BID]: (
+		bidAmount: number,
+		userId: string,
+		roomKey: string,
+	) => void;
+	[SOCKET_EVENTS.SELL_PROPERTY]: (
+		propertyId: number,
+		userId: string,
+		roomKey: string,
+		refundAmount: number,
+	) => void;
+	[SOCKET_EVENTS.COLLECT_TAX]: (userId: string, roomKey: string) => void;
 	[SOCKET_EVENTS.LEAVE_ROOM]: (roomKey: string) => void;
 	[SOCKET_EVENTS.SEND_TURN]: (turn: number, roomKey: string) => void;
 	[SOCKET_EVENTS.LEAVE_GAME]: (userId: string, roomKey: string) => void;
@@ -220,6 +263,7 @@ export interface Room {
 export interface TradeData {
 	amount: number;
 	properties: number[];
+	getOutOfJailCards?: number;
 }
 
 export interface RoomData {
@@ -245,7 +289,9 @@ export type MoneyUpdateSource =
 	| "upgrade"
 	| "trade"
 	| "pass-start"
-	| "manual";
+	| "manual"
+	| "sell"
+	| "auction";
 
 export type ChestEventId =
 	| "unexpected-inheritance"
@@ -257,7 +303,8 @@ export type ChestEventId =
 	| "property-damage"
 	| "fraud-scandal"
 	| "market-crash"
-	| "investigation-jail";
+	| "investigation-jail"
+	| "get-out-of-jail";
 
 export type ChestResolutionResult = {
 	eventId: ChestEventId;

@@ -32,3 +32,15 @@ export async function transferMoney(
 	await deductPlayerMoney(roomId, fromUserId, amount);
 	await addPlayerMoney(roomId, toUserId, amount);
 }
+
+export async function transferJailCards(
+	roomId: number,
+	fromUserId: string,
+	toUserId: string,
+	amount: number,
+): Promise<void> {
+	if (amount === 0) return;
+	const { updatePlayerGetOutOfJailCard } = await import("@/db/queries/player");
+	await updatePlayerGetOutOfJailCard(roomId, fromUserId, -amount);
+	await updatePlayerGetOutOfJailCard(roomId, toUserId, amount);
+}
