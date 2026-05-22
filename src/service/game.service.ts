@@ -537,11 +537,11 @@ export async function confirmTrade(
 				transferMoney(roomId, fromPlayer, toPlayer, tradeData.offer.amount),
 				tradeData.offer.getOutOfJailCards
 					? transferJailCards(
-						roomId,
-						fromPlayer,
-						toPlayer,
-						tradeData.offer.getOutOfJailCards,
-					)
+							roomId,
+							fromPlayer,
+							toPlayer,
+							tradeData.offer.getOutOfJailCards,
+						)
 					: Promise.resolve(),
 			]);
 			transferredProperties.push(...transferred);
@@ -558,11 +558,11 @@ export async function confirmTrade(
 				transferMoney(roomId, toPlayer, fromPlayer, tradeData.request.amount),
 				tradeData.request.getOutOfJailCards
 					? transferJailCards(
-						roomId,
-						toPlayer,
-						fromPlayer,
-						tradeData.request.getOutOfJailCards,
-					)
+							roomId,
+							toPlayer,
+							fromPlayer,
+							tradeData.request.getOutOfJailCards,
+						)
 					: Promise.resolve(),
 			]);
 			transferredProperties.push(...transferred);

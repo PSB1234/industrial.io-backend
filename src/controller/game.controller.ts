@@ -566,7 +566,12 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 								});
 							}
 
-							io.to(roomKey).emit(SOCKET_EVENTS.AUCTION_ENDED, auction.propertyId, winnerId, winningBid);
+							io.to(roomKey).emit(
+								SOCKET_EVENTS.AUCTION_ENDED,
+								auction.propertyId,
+								winnerId,
+								winningBid,
+							);
 							io.to(roomKey).emit(
 								SOCKET_EVENTS.PROPERTY_BOUGHT,
 								result.propertyId,
@@ -581,7 +586,13 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 				state.timer = startTimer();
 				roomAuctions.set(roomKey, state);
 
-				io.to(roomKey).emit(SOCKET_EVENTS.AUCTION_STARTED, propertyId, state.basePrice, state.currentBid, state.highestBidder);
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.AUCTION_STARTED,
+					propertyId,
+					state.basePrice,
+					state.currentBid,
+					state.highestBidder,
+				);
 				resetInactivityTimer(io, roomKey);
 			} catch (error) {
 				console.error("Error starting auction:", error);
@@ -650,7 +661,12 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 							});
 						}
 
-						io.to(roomKey).emit(SOCKET_EVENTS.AUCTION_ENDED, auc.propertyId, winnerId, winningBid);
+						io.to(roomKey).emit(
+							SOCKET_EVENTS.AUCTION_ENDED,
+							auc.propertyId,
+							winnerId,
+							winningBid,
+						);
 						io.to(roomKey).emit(
 							SOCKET_EVENTS.PROPERTY_BOUGHT,
 							result.propertyId,
@@ -661,7 +677,12 @@ export function registerGameController(io: AppServer, socket: AppSocket) {
 					}
 				}, 5000);
 
-				io.to(roomKey).emit(SOCKET_EVENTS.AUCTION_UPDATED, auction.propertyId, auction.currentBid, auction.highestBidder);
+				io.to(roomKey).emit(
+					SOCKET_EVENTS.AUCTION_UPDATED,
+					auction.propertyId,
+					auction.currentBid,
+					auction.highestBidder,
+				);
 				resetInactivityTimer(io, roomKey);
 			} catch (error) {
 				console.error("Error placing bid:", error);

@@ -1,6 +1,6 @@
+# Stage 1: Build the app
 FROM node:24-alpine AS builder
 
-# libc6-compat is typically needed for Alpine when dealing with native node modules (like those in esbuild/prisma/drizzle if any)
 RUN apk add --no-cache libc6-compat
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -9,18 +9,26 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-# Use frozen-lockfile for deterministic builds
 RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm build
 
-# Stage 2: Production
-FROM node:24-alpine AS runner
+# Stage 2: Install production dependencies only
+FROM node:24-alpine AS prod-deps
 
+RUN apk add --no-cache libc6-compat
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
+
+# Stage 3: Production Runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
@@ -30,17 +38,13 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 backenduser
 
-COPY package.json pnpm-lock.yaml ./
-# Install only production dependencies for deterministic output
-RUN pnpm install --prod --frozen-lockfile
-
+# Copy ONLY what is needed for production, setting ownership simultaneously 
+# This avoids the `chown -R` layer bloat!
+COPY --from=prod-deps --chown=backenduser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=backenduser:nodejs /app/dist ./dist
-# Drizzle files might be needed for migrations
 COPY --from=builder --chown=backenduser:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=backenduser:nodejs /app/drizzle.config.ts ./
-
-# Ensure the backenduser owns the necessary app files
-RUN chown -R backenduser:nodejs /app
+COPY --from=builder --chown=backenduser:nodejs /app/package.json ./
 
 USER backenduser
 
